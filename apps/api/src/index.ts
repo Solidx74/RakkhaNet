@@ -1,0 +1,48 @@
+import express from "express";
+import cors from "cors";
+import cookieParser from "cookie-parser";
+import dotenv from "dotenv";
+import { connectDB } from "./config/db";
+import authRoutes from "./routes/auth.routes";
+
+dotenv.config();
+
+const app = express();
+const PORT = process.env.PORT || 5000;
+
+// Middlewares
+app.use(cors({
+  origin: process.env.CLIENT_URL || "http://localhost:3000",
+  credentials: true,
+}));
+app.use(express.json());
+app.use(cookieParser());
+
+// Healthcheck Route
+app.get("/api/health", (_req, res) => {
+  res.json({
+    status: "online",
+    service: "RakkhaNet Express Core API",
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// API Module Routes
+app.use("/api/auth", authRoutes);
+
+// Global 404 Route
+app.use((_req, res) => {
+  res.status(404).json({ success: false, message: "API Route Not Found" });
+});
+
+// Start Server after connecting to MongoDB
+connectDB()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`[RakkhaNet API] Server running on http://localhost:${PORT}`);
+    });
+  })
+  .catch((err) => {
+    console.error("[RakkhaNet API] Failed to start server due to DB connection error:", err);
+    process.exit(1);
+  });

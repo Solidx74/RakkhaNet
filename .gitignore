@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build Outputs & Caches
+dist/
+.next/
+.turbo/
+build/
+out/
+
+# Environment Variables (All env files, no exceptions)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.*
+
+# Python (for apps/ai-service)
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+env/
+venv/
+
+# System & OS Files
+.DS_Store
+Thumbs.db
+*.log
+coverage/
+
+# IDE & Editor Directories
+.vscode/
+.idea/
+*.swp
+*.swo

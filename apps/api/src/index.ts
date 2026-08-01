@@ -4,6 +4,7 @@ import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
 import { connectDB } from "./config/db";
 import authRoutes from "./routes/auth.routes";
+import shelterRoutes from "./routes/shelters.routes";
 
 dotenv.config();
 
@@ -29,6 +30,7 @@ app.get("/api/health", (_req, res) => {
 
 // API Module Routes
 app.use("/api/auth", authRoutes);
+app.use("/api/shelters", shelterRoutes);
 
 // Global 404 Route
 app.use((_req, res) => {
@@ -36,13 +38,16 @@ app.use((_req, res) => {
 });
 
 // Start Server after connecting to MongoDB
-connectDB()
-  .then(() => {
-    app.listen(PORT, () => {
-      console.log(`[RakkhaNet API] Server running on http://localhost:${PORT}`);
+if (process.env.NODE_ENV !== "test") {
+  connectDB()
+    .then(() => {
+      app.listen(PORT, () => {
+        console.log(`[RakkhaNet API] Server running on http://localhost:${PORT}`);
+      });
+    })
+    .catch((err) => {
+      console.error("[RakkhaNet API] Failed to start server due to DB connection error:", err);
     });
-  })
-  .catch((err) => {
-    console.error("[RakkhaNet API] Failed to start server due to DB connection error:", err);
-    process.exit(1);
-  });
+}
+
+export default app;

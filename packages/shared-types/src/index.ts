@@ -88,39 +88,60 @@ export type RiskZone = z.infer<typeof RiskZoneSchema>;
 export const ShelterStatusSchema = z.enum(["OPEN", "FULL", "CLOSED", "INACCESSIBLE"]);
 export type ShelterStatus = z.infer<typeof ShelterStatusSchema>;
 
+export const ShelterAmenitiesSchema = z.object({
+  hasCleanWater: z.boolean().default(true),
+  hasElectricity: z.boolean().default(true),
+  hasGenerator: z.boolean().default(false),
+  hasMedicalFacility: z.boolean().default(false),
+  separateWomenSpace: z.boolean().default(true),
+});
+export type ShelterAmenities = z.infer<typeof ShelterAmenitiesSchema>;
+
+export const ShelterContactSchema = z.object({
+  name: z.string(),
+  phone: z.string(),
+});
+export type ShelterContact = z.infer<typeof ShelterContactSchema>;
+
 export const ShelterSchema = z.object({
   _id: z.string().optional(),
-  name: z.string(),
+  name: z.string().min(3, "Shelter name must be at least 3 characters"),
   code: z.string().optional(),
   location: GeoJSONPointSchema,
   address: z.string(),
   division: z.string(),
   district: z.string(),
   upazila: z.string(),
-  capacity: z.number().int().positive(),
+  capacity: z.number().int().positive("Capacity must be positive"),
   currentOccupancy: z.number().int().nonnegative().default(0),
   status: ShelterStatusSchema.default("OPEN"),
-  amenities: z.object({
-    hasCleanWater: z.boolean().default(true),
-    hasElectricity: z.boolean().default(true),
-    hasGenerator: z.boolean().default(false),
-    hasMedicalFacility: z.boolean().default(false),
-    separateWomenSpace: z.boolean().default(true),
-  }).default({
+  amenities: ShelterAmenitiesSchema.default({
     hasCleanWater: true,
     hasElectricity: true,
     hasGenerator: false,
     hasMedicalFacility: false,
     separateWomenSpace: true,
   }),
-  contactPerson: z.object({
-    name: z.string(),
-    phone: z.string(),
-  }),
+  contactPerson: ShelterContactSchema,
   createdAt: z.date().default(() => new Date()),
   updatedAt: z.date().default(() => new Date()),
 });
 export type Shelter = z.infer<typeof ShelterSchema>;
+
+export const CreateShelterDTO = ShelterSchema.omit({ _id: true, createdAt: true, updatedAt: true });
+export type CreateShelterDTO = z.infer<typeof CreateShelterDTO>;
+
+export const UpdateShelterDTO = ShelterSchema.partial().omit({ _id: true });
+export type UpdateShelterDTO = z.infer<typeof UpdateShelterDTO>;
+
+export const NearbyShelterQueryDTO = z.object({
+  lat: z.coerce.number().min(-90).max(90),
+  lng: z.coerce.number().min(-180).max(180),
+  maxDistance: z.coerce.number().positive().default(10000), // meters
+  minCapacity: z.coerce.number().nonnegative().optional(),
+  district: z.string().optional(),
+});
+export type NearbyShelterQueryDTO = z.infer<typeof NearbyShelterQueryDTO>;
 
 // ==========================================
 // 4. Relief Requests Collection
@@ -176,7 +197,7 @@ export const ResourceSchema = z.object({
 export type Resource = z.infer<typeof ResourceSchema>;
 
 // ==========================================
-// 6. Reports Collection (Crowdsourced)
+// 6. Reports Collection
 // ==========================================
 export const ReportStatusSchema = z.enum(["UNVERIFIED", "VERIFIED", "DISCARDED"]);
 export type ReportStatus = z.infer<typeof ReportStatusSchema>;

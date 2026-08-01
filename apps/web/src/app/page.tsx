@@ -21,16 +21,16 @@ export default function LandingPage() {
         </div>
 
         <nav className="hidden md:flex items-center space-x-6 text-sm font-medium text-gray-300">
+          <a href="/shelters" className="hover:text-emerald-400 transition">Shelter Locator</a>
           <a href="#risk-map" className="hover:text-emerald-400 transition">Risk Map</a>
-          <a href="#shelters" className="hover:text-emerald-400 transition">Shelter Locator</a>
           <a href="#evacuation" className="hover:text-emerald-400 transition">Evacuation</a>
           <a href="#relief" className="hover:text-emerald-400 transition">Relief Dashboard</a>
         </nav>
 
         <div className="flex items-center space-x-3">
-          <button className="px-4 py-2 text-sm font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white transition shadow-md shadow-emerald-900/30">
-            Citizen Emergency SOS
-          </button>
+          <a href="/shelters" className="px-4 py-2 text-sm font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white transition shadow-md shadow-emerald-900/30">
+            Find Shelters Near Me
+          </a>
         </div>
       </header>
 
@@ -52,10 +52,10 @@ export default function LandingPage() {
             </p>
 
             <div className="flex flex-wrap gap-4 pt-2">
-              <button className="px-6 py-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold flex items-center space-x-2 transition">
+              <a href="/shelters" className="px-6 py-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold flex items-center space-x-2 transition shadow-lg shadow-emerald-950/50">
                 <MapPin className="w-5 h-5" />
                 <span>Locate Nearest Shelter</span>
-              </button>
+              </a>
 
               <button className="px-6 py-3 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 font-semibold flex items-center space-x-2 transition">
                 <ShieldAlert className="w-5 h-5 text-rose-500" />
@@ -118,15 +118,15 @@ export default function LandingPage() {
               </p>
             </div>
 
-            <div className="bg-gray-900/60 border border-gray-800 p-6 rounded-2xl hover:border-emerald-500/50 transition">
-              <div className="w-10 h-10 rounded-lg bg-emerald-950 border border-emerald-800 flex items-center justify-center text-emerald-400 mb-4">
+            <a href="/shelters" className="bg-gray-900/60 border border-gray-800 p-6 rounded-2xl hover:border-emerald-500/50 transition block group">
+              <div className="w-10 h-10 rounded-lg bg-emerald-950 border border-emerald-800 flex items-center justify-center text-emerald-400 mb-4 group-hover:scale-110 transition-transform">
                 <MapPin className="w-5 h-5" />
               </div>
-              <h4 className="text-lg font-bold text-white">2. Emergency Shelter Locator</h4>
+              <h4 className="text-lg font-bold text-white group-hover:text-emerald-400 transition">2. Emergency Shelter Locator</h4>
               <p className="text-gray-400 text-sm mt-2">
                 2dsphere spatial search finding open cyclone shelters with real-time capacity and amenity verification.
               </p>
-            </div>
+            </a>
 
             <div className="bg-gray-900/60 border border-gray-800 p-6 rounded-2xl hover:border-emerald-500/50 transition">
               <div className="w-10 h-10 rounded-lg bg-blue-950 border border-blue-800 flex items-center justify-center text-blue-400 mb-4">

@@ -229,14 +229,14 @@ export type RequestStatus = z.infer<typeof RequestStatusSchema>;
 export const ReliefRequestSchema = z.object({
   _id: z.string().optional(),
   requesterId: z.string().optional(),
-  requesterName: z.string(),
-  contactPhone: z.string(),
+  requesterName: z.string().min(2, "Name must be at least 2 characters"),
+  contactPhone: z.string().regex(/^(\+8801|01)[3-9]\d{8}$/, "Invalid phone number"),
   location: GeoJSONPointSchema,
-  addressDetails: z.string(),
+  addressDetails: z.string().min(3, "Address details must be at least 3 characters"),
   category: RequestCategorySchema,
   urgency: RequestUrgencySchema.default("MEDIUM"),
   peopleCount: z.number().int().positive().default(1),
-  description: z.string(),
+  description: z.string().min(5, "Description must be at least 5 characters"),
   status: RequestStatusSchema.default("PENDING"),
   assignedVolunteerId: z.string().nullable().optional(),
   assignedShelterId: z.string().nullable().optional(),
@@ -246,6 +246,54 @@ export const ReliefRequestSchema = z.object({
 });
 export type ReliefRequest = z.infer<typeof ReliefRequestSchema>;
 
+export const CreateReliefRequestDTO = ReliefRequestSchema.omit({ _id: true, createdAt: true, updatedAt: true });
+export type CreateReliefRequestDTO = z.infer<typeof CreateReliefRequestDTO>;
+
+export const UpdateReliefRequestDTO = ReliefRequestSchema.partial().omit({ _id: true });
+export type UpdateReliefRequestDTO = z.infer<typeof UpdateReliefRequestDTO>;
+
+/**
+ * Heuristic priority and urgency calculation based on severity keywords and input severity.
+ */
+export function calculatePriorityScore(
+  description: string,
+  severityInput: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL"
+): { priorityScore: number; urgency: RequestUrgency } {
+  let baseScore = 15;
+  if (severityInput === "MEDIUM") baseScore = 45;
+  if (severityInput === "HIGH") baseScore = 70;
+  if (severityInput === "CRITICAL") baseScore = 90;
+
+  let keywordBonus = 0;
+  const descLower = description.toLowerCase();
+
+  const criticalKeywords = ["drown", "trap", "injured", "bleed", "heart", "die", "infant", "pregnant", "submerged"];
+  const highKeywords = ["hungry", "starving", "thirst", "dehydrated", "medicine", "sick", "elderly", "collapsing"];
+
+  for (const kw of criticalKeywords) {
+    if (descLower.includes(kw)) {
+      keywordBonus += 15;
+      break;
+    }
+  }
+
+  for (const kw of highKeywords) {
+    if (descLower.includes(kw)) {
+      keywordBonus += 10;
+      break;
+    }
+  }
+
+  const priorityScore = Math.max(0, Math.min(100, baseScore + keywordBonus));
+
+  let urgency: RequestUrgency = "LOW";
+  if (priorityScore >= 85) urgency = "CRITICAL";
+  else if (priorityScore >= 70) urgency = "HIGH";
+  else if (priorityScore >= 45) urgency = "MEDIUM";
+
+  return { priorityScore, urgency };
+}
+
 // ==========================================
 // 6. Resources Collection
 // ==========================================
@@ -254,18 +302,24 @@ export type ResourceCategory = z.infer<typeof ResourceCategorySchema>;
 
 export const ResourceSchema = z.object({
   _id: z.string().optional(),
-  shelterId: z.string(),
+  shelterId: z.string().min(1, "Shelter ID is required"),
   category: ResourceCategorySchema,
-  itemName: z.string(),
+  itemName: z.string().min(2, "Item name must be at least 2 characters"),
   totalQuantity: z.number().nonnegative(),
   allocatedQuantity: z.number().nonnegative().default(0),
-  unit: z.string(),
+  unit: z.string().min(1, "Unit is required"),
   lastRestockedAt: z.date().default(() => new Date()),
   updatedBy: z.string().optional(),
   createdAt: z.date().default(() => new Date()),
   updatedAt: z.date().default(() => new Date()),
 });
 export type Resource = z.infer<typeof ResourceSchema>;
+
+export const CreateResourceDTO = ResourceSchema.omit({ _id: true, createdAt: true, updatedAt: true });
+export type CreateResourceDTO = z.infer<typeof CreateResourceDTO>;
+
+export const UpdateResourceDTO = ResourceSchema.partial().omit({ _id: true });
+export type UpdateResourceDTO = z.infer<typeof UpdateResourceDTO>;
 
 // ==========================================
 // 7. Reports Collection

@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
-import { Navigation, MapPin, Phone, ShieldAlert, ArrowRight, RefreshCw, CheckCircle2, Clock, Footprints } from "lucide-react";
+import { Navigation, Phone, ShieldAlert, RefreshCw, Clock, Footprints } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
 
 const EvacuationMap = dynamic(() => import("@/components/map/EvacuationMap"), {
@@ -20,7 +20,7 @@ const EvacuationMap = dynamic(() => import("@/components/map/EvacuationMap"), {
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
-export default function EvacuationGuidancePage() {
+function EvacuationGuidanceContent() {
   const searchParams = useSearchParams();
   const targetShelterId = searchParams.get("shelterId");
   const { token } = useAuthStore();
@@ -56,7 +56,7 @@ export default function EvacuationGuidancePage() {
   }, []);
 
   // TanStack Query: Fetch Evacuation Route
-  const { data, isLoading, isError, error, refetch } = useQuery({
+  const { data: routeData, isLoading, isError, refetch } = useQuery({
     queryKey: ["evacuation-route", userLocation, targetShelterId],
     enabled: !!userLocation,
     queryFn: async () => {
@@ -78,7 +78,6 @@ export default function EvacuationGuidancePage() {
     },
   });
 
-  const routeData = data;
   const shelter = routeData?.destinationShelter;
 
   return (
@@ -256,5 +255,18 @@ export default function EvacuationGuidancePage() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function EvacuationGuidancePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#0d1117] flex flex-col items-center justify-center text-white space-y-3">
+        <RefreshCw className="w-8 h-8 animate-spin text-emerald-500" />
+        <p className="text-sm font-medium">Loading Evacuation Module...</p>
+      </div>
+    }>
+      <EvacuationGuidanceContent />
+    </Suspense>
   );
 }

@@ -1,38 +1,13 @@
 "use client";
 
 import React from "react";
+import Navbar from "@/components/Navbar";
 import { ShieldAlert, MapPin, Navigation, HeartHandshake, Bell, Lock } from "lucide-react";
 
 export default function LandingPage() {
   return (
     <div className="flex flex-col min-h-screen">
-      {/* Header / Navbar */}
-      <header className="sticky top-0 z-50 backdrop-blur-md bg-[#0d1117]/80 border-b border-gray-800 px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <div className="w-9 h-9 rounded-lg bg-emerald-600 flex items-center justify-center font-bold text-white shadow-lg shadow-emerald-900/50">
-            R
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-white tracking-wide">
-              Rakkha<span className="text-emerald-500">Net</span>
-            </h1>
-            <p className="text-xs text-gray-400">Bangladesh Disaster Response Platform</p>
-          </div>
-        </div>
-
-        <nav className="hidden md:flex items-center space-x-6 text-sm font-medium text-gray-300">
-          <a href="/shelters" className="hover:text-emerald-400 transition">Shelter Locator</a>
-          <a href="/risk-map" className="hover:text-emerald-400 transition">Risk Map</a>
-          <a href="#evacuation" className="hover:text-emerald-400 transition">Evacuation</a>
-          <a href="#relief" className="hover:text-emerald-400 transition">Relief Dashboard</a>
-        </nav>
-
-        <div className="flex items-center space-x-3">
-          <a href="/shelters" className="px-4 py-2 text-sm font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white transition shadow-md shadow-emerald-900/30">
-            Find Shelters Near Me
-          </a>
-        </div>
-      </header>
+      <Navbar />
 
       {/* Hero Section */}
       <main className="flex-1 max-w-7xl mx-auto px-6 py-12 w-full">
@@ -138,15 +113,15 @@ export default function LandingPage() {
               </p>
             </div>
 
-            <div className="bg-gray-900/60 border border-gray-800 p-6 rounded-2xl hover:border-emerald-500/50 transition">
-              <div className="w-10 h-10 rounded-lg bg-amber-950 border border-amber-800 flex items-center justify-center text-amber-400 mb-4">
+            <a href="/dashboard" className="bg-gray-900/60 border border-gray-800 p-6 rounded-2xl hover:border-emerald-500/50 transition block group">
+              <div className="w-10 h-10 rounded-lg bg-amber-950 border border-amber-800 flex items-center justify-center text-amber-400 mb-4 group-hover:scale-110 transition-transform">
                 <HeartHandshake className="w-5 h-5" />
               </div>
-              <h4 className="text-lg font-bold text-white">4. Relief Coordination Dashboard</h4>
+              <h4 className="text-lg font-bold text-white group-hover:text-emerald-400 transition">4. Relief Coordination Dashboard</h4>
               <p className="text-gray-400 text-sm mt-2">
                 Kanban triage for NGO coordinators and volunteers to track food, water, and medical supply distribution.
               </p>
-            </div>
+            </a>
 
             <div className="bg-gray-900/60 border border-gray-800 p-6 rounded-2xl hover:border-emerald-500/50 transition">
               <div className="w-10 h-10 rounded-lg bg-purple-950 border border-purple-800 flex items-center justify-center text-purple-400 mb-4">

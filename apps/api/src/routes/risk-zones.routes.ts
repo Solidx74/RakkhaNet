@@ -1,6 +1,7 @@
 import { Router, Response } from "express";
 import { ObjectId } from "mongodb";
 import { getDB } from "../config/db";
+import { fetchWeatherData } from "../services/weather.service";
 import {
   CreateRiskZoneDTO,
   UpdateRiskZoneDTO,
@@ -111,7 +112,71 @@ router.get("/intersects", async (req, res: Response) => {
 });
 
 // ==========================================
-// 3. GET /api/risk-zones/:id (Fetch single risk zone)
+// 3. POST /api/risk-zones/refresh (Live Weather Refresh - Admin / Coordinator only)
+// ==========================================
+router.post(
+  "/refresh",
+  authenticate,
+  requireRole(["ADMIN", "COORDINATOR"]),
+  async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const db = getDB();
+      const riskZones = await db.collection("risk_zones").find({ isActive: true }).toArray();
+
+      const updateLogs: string[] = [];
+
+      for (const zone of riskZones) {
+        if (!zone.geometry?.coordinates?.[0]?.[0]) continue;
+
+        // Centroid approximation from coordinates
+        const [lng, lat] = zone.geometry.coordinates[0][0];
+
+        // Fetch live weather data from OpenWeather API
+        const weatherData = await fetchWeatherData(lat, lng);
+
+        if (weatherData) {
+          const scoring = calculateRiskScore({
+            rainfallMm24h: weatherData.rainfallMm24h,
+            riverWaterLevelMeters: weatherData.riverWaterLevelMeters,
+            elevationMeters: weatherData.elevationMeters,
+          });
+
+          await db.collection("risk_zones").updateOne(
+            { _id: zone._id },
+            {
+              $set: {
+                rainfallMm24h: weatherData.rainfallMm24h,
+                riverWaterLevelMeters: weatherData.riverWaterLevelMeters,
+                elevationMeters: weatherData.elevationMeters,
+                riskScore: scoring.riskScore,
+                riskLevel: scoring.riskLevel,
+                updatedBy: "WEATHER_API",
+                updatedAt: new Date(),
+              },
+            }
+          );
+          updateLogs.push(`Updated ${zone.title} (Live Rain: ${weatherData.rainfallMm24h}mm, Score: ${scoring.riskScore})`);
+        } else {
+          updateLogs.push(`Retained seeded fallback details for ${zone.title} (Fetch Failed)`);
+        }
+      }
+
+      return res.json({
+        success: true,
+        message: "Disaster risk zone maps refreshed with live weather heuristics",
+        data: {
+          processedCount: riskZones.length,
+          logs: updateLogs,
+        },
+      });
+    } catch (error: any) {
+      return res.status(500).json({ success: false, message: error.message });
+    }
+  }
+);
+
+// ==========================================
+// 4. GET /api/risk-zones/:id (Fetch single risk zone)
 // ==========================================
 router.get("/:id", async (req, res: Response) => {
   try {
@@ -140,7 +205,7 @@ router.get("/:id", async (req, res: Response) => {
 });
 
 // ==========================================
-// 4. POST /api/risk-zones (Create - Admin / Coordinator only)
+// 5. POST /api/risk-zones (Create - Admin / Coordinator only)
 // ==========================================
 router.post(
   "/",
@@ -193,7 +258,7 @@ router.post(
 );
 
 // ==========================================
-// 5. PATCH /api/risk-zones/:id (Update - Admin / Coordinator only)
+// 6. PATCH /api/risk-zones/:id (Update - Admin / Coordinator only)
 // ==========================================
 router.patch(
   "/:id",

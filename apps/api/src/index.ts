@@ -12,6 +12,7 @@ import evacuationRoutes from "./routes/evacuation.routes";
 import reliefRequestsRoutes from "./routes/relief-requests.routes";
 import resourcesRoutes from "./routes/resources.routes";
 import dashboardRoutes from "./routes/dashboard.routes";
+import notificationsRoutes from "./routes/notifications.routes";
 
 dotenv.config();
 
@@ -47,6 +48,7 @@ app.use("/api/evacuation-route", evacuationRoutes);
 app.use("/api/relief-requests", reliefRequestsRoutes);
 app.use("/api/resources", resourcesRoutes);
 app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/notifications", notificationsRoutes);
 
 // Global 404 Route
 app.use((_req, res) => {

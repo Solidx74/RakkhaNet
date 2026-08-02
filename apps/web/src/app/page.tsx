@@ -22,7 +22,7 @@ export default function LandingPage() {
 
         <nav className="hidden md:flex items-center space-x-6 text-sm font-medium text-gray-300">
           <a href="/shelters" className="hover:text-emerald-400 transition">Shelter Locator</a>
-          <a href="#risk-map" className="hover:text-emerald-400 transition">Risk Map</a>
+          <a href="/risk-map" className="hover:text-emerald-400 transition">Risk Map</a>
           <a href="#evacuation" className="hover:text-emerald-400 transition">Evacuation</a>
           <a href="#relief" className="hover:text-emerald-400 transition">Relief Dashboard</a>
         </nav>
@@ -57,10 +57,10 @@ export default function LandingPage() {
                 <span>Locate Nearest Shelter</span>
               </a>
 
-              <button className="px-6 py-3 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 font-semibold flex items-center space-x-2 transition">
+              <a href="/risk-map" className="px-6 py-3 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 font-semibold flex items-center space-x-2 transition">
                 <ShieldAlert className="w-5 h-5 text-rose-500" />
                 <span>View Risk Zones</span>
-              </button>
+              </a>
             </div>
           </div>
 
@@ -108,15 +108,15 @@ export default function LandingPage() {
           <h3 className="text-2xl font-bold text-white tracking-tight text-center">Core Platform Modules</h3>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div className="bg-gray-900/60 border border-gray-800 p-6 rounded-2xl hover:border-emerald-500/50 transition">
-              <div className="w-10 h-10 rounded-lg bg-rose-950 border border-rose-800 flex items-center justify-center text-rose-400 mb-4">
+            <a href="/risk-map" className="bg-gray-900/60 border border-gray-800 p-6 rounded-2xl hover:border-rose-500/50 transition block group">
+              <div className="w-10 h-10 rounded-lg bg-rose-950 border border-rose-800 flex items-center justify-center text-rose-400 mb-4 group-hover:scale-110 transition-transform">
                 <ShieldAlert className="w-5 h-5" />
               </div>
-              <h4 className="text-lg font-bold text-white">1. Flood & Cyclone Risk Map</h4>
+              <h4 className="text-lg font-bold text-white group-hover:text-rose-400 transition">1. Flood & Cyclone Risk Map</h4>
               <p className="text-gray-400 text-sm mt-2">
                 Real-time spatial visualization of flood extent polygons, river water levels, and cyclone path warnings.
               </p>
-            </div>
+            </a>
 
             <a href="/shelters" className="bg-gray-900/60 border border-gray-800 p-6 rounded-2xl hover:border-emerald-500/50 transition block group">
               <div className="w-10 h-10 rounded-lg bg-emerald-950 border border-emerald-800 flex items-center justify-center text-emerald-400 mb-4 group-hover:scale-110 transition-transform">

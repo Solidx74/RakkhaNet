@@ -5,6 +5,7 @@ import dotenv from "dotenv";
 import { connectDB } from "./config/db";
 import authRoutes from "./routes/auth.routes";
 import shelterRoutes from "./routes/shelters.routes";
+import riskZoneRoutes from "./routes/risk-zones.routes";
 
 dotenv.config();
 
@@ -31,6 +32,7 @@ app.get("/api/health", (_req, res) => {
 // API Module Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/shelters", shelterRoutes);
+app.use("/api/risk-zones", riskZoneRoutes);
 
 // Global 404 Route
 app.use((_req, res) => {

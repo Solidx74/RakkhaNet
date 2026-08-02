@@ -58,7 +58,7 @@ export const SignInDTO = z.object({
 export type SignInDTO = z.infer<typeof SignInDTO>;
 
 // ==========================================
-// 2. Risk Zones Collection
+// 2. Risk Zones Collection & Heuristic Scoring
 // ==========================================
 export const RiskLevelSchema = z.enum(["LOW", "MEDIUM", "HIGH", "CRITICAL"]);
 export type RiskLevel = z.infer<typeof RiskLevelSchema>;
@@ -68,11 +68,16 @@ export type DisasterType = z.infer<typeof DisasterTypeSchema>;
 
 export const RiskZoneSchema = z.object({
   _id: z.string().optional(),
-  title: z.string(),
+  title: z.string().min(3, "Title must be at least 3 characters"),
+  district: z.string(),
+  division: z.string(),
   disasterType: DisasterTypeSchema,
-  riskLevel: RiskLevelSchema,
+  riskLevel: RiskLevelSchema.optional(),
+  riskScore: z.number().min(0).max(100).optional(),
+  rainfallMm24h: z.number().default(0),
+  riverWaterLevelMeters: z.number().default(0),
+  elevationMeters: z.number().default(5),
   geometry: GeoJSONPolygonSchema,
-  riverWaterLevelMeters: z.number().optional(),
   warningLevel: z.string().optional(),
   affectedPopEstimate: z.number().default(0),
   isActive: z.boolean().default(true),
@@ -81,6 +86,41 @@ export const RiskZoneSchema = z.object({
   updatedAt: z.date().default(() => new Date()),
 });
 export type RiskZone = z.infer<typeof RiskZoneSchema>;
+
+export const CreateRiskZoneDTO = RiskZoneSchema.omit({ _id: true, createdAt: true, updatedAt: true });
+export type CreateRiskZoneDTO = z.infer<typeof CreateRiskZoneDTO>;
+
+export const UpdateRiskZoneDTO = RiskZoneSchema.partial().omit({ _id: true });
+export type UpdateRiskZoneDTO = z.infer<typeof UpdateRiskZoneDTO>;
+
+/**
+ * Heuristic Rule-Based Risk Scoring Stub
+ * Evaluates rainfall, river water level above danger mark, and ground elevation
+ */
+export function calculateRiskScore(inputs: {
+  rainfallMm24h: number;
+  riverWaterLevelMeters: number;
+  elevationMeters: number;
+}): { riskScore: number; riskLevel: RiskLevel } {
+  const { rainfallMm24h, riverWaterLevelMeters, elevationMeters } = inputs;
+
+  // Rule-based heuristic formula
+  const rawScore = (rainfallMm24h * 0.35) + (riverWaterLevelMeters * 15.0) - (elevationMeters * 2.5);
+  const riskScore = Math.max(0, Math.min(100, Math.round(rawScore)));
+
+  let riskLevel: RiskLevel = "LOW";
+  if (riskScore >= 85) {
+    riskLevel = "CRITICAL";
+  } else if (riskScore >= 70) {
+    riskLevel = "HIGH";
+  } else if (riskScore >= 45) {
+    riskLevel = "MEDIUM";
+  } else {
+    riskLevel = "LOW";
+  }
+
+  return { riskScore, riskLevel };
+}
 
 // ==========================================
 // 3. Shelters Collection

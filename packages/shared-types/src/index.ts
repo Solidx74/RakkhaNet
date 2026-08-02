@@ -15,6 +15,12 @@ export const GeoJSONPolygonSchema = z.object({
 });
 export type GeoJSONPolygon = z.infer<typeof GeoJSONPolygonSchema>;
 
+export const GeoJSONLineStringSchema = z.object({
+  type: z.literal("LineString"),
+  coordinates: z.array(z.tuple([z.number(), z.number()])), // [[longitude, latitude], ...]
+});
+export type GeoJSONLineString = z.infer<typeof GeoJSONLineStringSchema>;
+
 // ==========================================
 // 1. Users Collection
 // ==========================================
@@ -103,8 +109,6 @@ export function calculateRiskScore(inputs: {
   elevationMeters: number;
 }): { riskScore: number; riskLevel: RiskLevel } {
   const { rainfallMm24h, riverWaterLevelMeters, elevationMeters } = inputs;
-
-  // Rule-based heuristic formula
   const rawScore = (rainfallMm24h * 0.35) + (riverWaterLevelMeters * 15.0) - (elevationMeters * 2.5);
   const riskScore = Math.max(0, Math.min(100, Math.round(rawScore)));
 
@@ -184,7 +188,34 @@ export const NearbyShelterQueryDTO = z.object({
 export type NearbyShelterQueryDTO = z.infer<typeof NearbyShelterQueryDTO>;
 
 // ==========================================
-// 4. Relief Requests Collection
+// 4. Evacuation Route DTOs & Schemas
+// ==========================================
+export const EvacuationRouteQueryDTO = z.object({
+  fromLat: z.coerce.number().min(-90).max(90),
+  fromLng: z.coerce.number().min(-180).max(180),
+  shelterId: z.string().optional(),
+});
+export type EvacuationRouteQueryDTO = z.infer<typeof EvacuationRouteQueryDTO>;
+
+export interface RouteStepInstruction {
+  distanceMeters: number;
+  durationSeconds: number;
+  instruction: string;
+  name: string;
+}
+
+export interface EvacuationRouteResponse {
+  routeType: "road" | "fallback";
+  destinationShelter: Shelter;
+  distanceMeters: number;
+  durationMinutes: number;
+  geometry: GeoJSONLineString;
+  steps: RouteStepInstruction[];
+  warnings?: string[];
+}
+
+// ==========================================
+// 5. Relief Requests Collection
 // ==========================================
 export const RequestUrgencySchema = z.enum(["LOW", "MEDIUM", "HIGH", "CRITICAL"]);
 export type RequestUrgency = z.infer<typeof RequestUrgencySchema>;
@@ -216,7 +247,7 @@ export const ReliefRequestSchema = z.object({
 export type ReliefRequest = z.infer<typeof ReliefRequestSchema>;
 
 // ==========================================
-// 5. Resources Collection
+// 6. Resources Collection
 // ==========================================
 export const ResourceCategorySchema = z.enum(["DRY_FOOD", "DRINKING_WATER", "MEDICINE", "ORAL_SALINE", "BLANKETS", "HYGIENE_KITS"]);
 export type ResourceCategory = z.infer<typeof ResourceCategorySchema>;
@@ -237,7 +268,7 @@ export const ResourceSchema = z.object({
 export type Resource = z.infer<typeof ResourceSchema>;
 
 // ==========================================
-// 6. Reports Collection
+// 7. Reports Collection
 // ==========================================
 export const ReportStatusSchema = z.enum(["UNVERIFIED", "VERIFIED", "DISCARDED"]);
 export type ReportStatus = z.infer<typeof ReportStatusSchema>;
@@ -258,7 +289,7 @@ export const ReportSchema = z.object({
 export type Report = z.infer<typeof ReportSchema>;
 
 // ==========================================
-// 7. Notifications Collection
+// 8. Notifications Collection
 // ==========================================
 export const NotificationChannelSchema = z.enum(["IN_APP", "SMS", "WEBSOCKET_BROADCAST"]);
 export type NotificationChannel = z.infer<typeof NotificationChannelSchema>;

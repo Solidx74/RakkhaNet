@@ -87,7 +87,7 @@ export default function ShelterMap({ shelters, userLocation, selectedShelterId, 
 
         <MapController center={defaultCenter} selectedCoords={selectedCoords} />
 
-        {/* User Geolocation Pulse Marker */}
+        {/* User Geolocation Marker */}
         {userLocation && (
           <CircleMarker
             center={[userLocation.lat, userLocation.lng]}
@@ -99,12 +99,9 @@ export default function ShelterMap({ shelters, userLocation, selectedShelterId, 
               weight: 3,
             }}
           >
-            <Popup className="dark-popup">
+            <Popup>
               <div className="p-1 text-xs">
-                <p className="font-bold text-blue-600">Your Detected Geolocation</p>
-                <p className="text-gray-600 font-mono">
-                  [{userLocation.lat.toFixed(4)}, {userLocation.lng.toFixed(4)}]
-                </p>
+                <p className="font-bold text-blue-600">Your Detected Location</p>
               </div>
             </Popup>
           </CircleMarker>
@@ -134,7 +131,7 @@ export default function ShelterMap({ shelters, userLocation, selectedShelterId, 
               }}
             >
               <Popup>
-                <div className="p-2 text-xs space-y-2 max-w-[240px]">
+                <div className="p-2 text-xs space-y-2 max-w-[250px]">
                   <div>
                     <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-gray-100 text-gray-700 font-semibold">
                       {shelter.code || "SHELTER"}
@@ -143,7 +140,6 @@ export default function ShelterMap({ shelters, userLocation, selectedShelterId, 
                     <p className="text-gray-500">{shelter.address}, {shelter.upazila}, {shelter.district}</p>
                   </div>
 
-                  {/* Distance badge */}
                   {shelter.distanceMeters !== undefined && (
                     <div className="bg-blue-50 text-blue-700 px-2 py-1 rounded font-medium text-[11px]">
                       📍 {(shelter.distanceMeters / 1000).toFixed(1)} km away
@@ -159,33 +155,18 @@ export default function ShelterMap({ shelters, userLocation, selectedShelterId, 
                     <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
                       <div
                         className="h-full transition-all"
-                        style={{
-                          width: `${occPct}%`,
-                          backgroundColor: color,
-                        }}
+                        style={{ width: `${occPct}%`, backgroundColor: color }}
                       />
                     </div>
-                    <p className="text-[10px] text-gray-500 mt-0.5">
-                      Available Space: <span className="font-bold text-gray-800">{availCap} persons</span>
-                    </p>
                   </div>
 
-                  {/* Amenities */}
-                  <div className="flex flex-wrap gap-1 pt-1">
-                    {shelter.amenities.hasCleanWater && <span className="px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 text-[9px]">💧 Water</span>}
-                    {shelter.amenities.hasElectricity && <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[9px]">⚡ Power</span>}
-                    {shelter.amenities.hasGenerator && <span className="px-1.5 py-0.5 rounded bg-orange-100 text-orange-800 text-[9px]">🔋 Gen</span>}
-                    {shelter.amenities.hasMedicalFacility && <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[9px]">🏥 Medical</span>}
-                    {shelter.amenities.separateWomenSpace && <span className="px-1.5 py-0.5 rounded bg-purple-100 text-purple-800 text-[9px]">👩 Women Space</span>}
-                  </div>
-
-                  {/* Contact Person */}
-                  <div className="border-t pt-1.5 mt-1 text-[10px] text-gray-600">
-                    <p>Contact: <span className="font-semibold text-gray-800">{shelter.contactPerson.name}</span></p>
-                    <a href={`tel:${shelter.contactPerson.phone}`} className="text-emerald-600 font-bold hover:underline">
-                      📞 {shelter.contactPerson.phone}
-                    </a>
-                  </div>
+                  {/* Get Directions Button */}
+                  <a
+                    href={`/evacuation?shelterId=${shelter._id}`}
+                    className="w-full mt-2 text-center block px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold text-xs shadow transition"
+                  >
+                    🧭 Get Evacuation Directions
+                  </a>
                 </div>
               </Popup>
             </CircleMarker>
@@ -193,7 +174,7 @@ export default function ShelterMap({ shelters, userLocation, selectedShelterId, 
         })}
       </MapContainer>
 
-      {/* Map Legend Overlay */}
+      {/* Map Legend */}
       <div className="absolute bottom-4 right-4 z-[400] bg-gray-900/90 border border-gray-800 backdrop-blur-md p-3 rounded-xl text-xs space-y-1.5 text-gray-300">
         <p className="font-bold text-white text-[11px]">Occupancy Status Legend</p>
         <div className="flex items-center space-x-2">

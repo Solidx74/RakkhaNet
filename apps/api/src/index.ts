@@ -6,6 +6,7 @@ import { connectDB } from "./config/db";
 import authRoutes from "./routes/auth.routes";
 import shelterRoutes from "./routes/shelters.routes";
 import riskZoneRoutes from "./routes/risk-zones.routes";
+import evacuationRoutes from "./routes/evacuation.routes";
 
 dotenv.config();
 
@@ -33,6 +34,7 @@ app.get("/api/health", (_req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/shelters", shelterRoutes);
 app.use("/api/risk-zones", riskZoneRoutes);
+app.use("/api/evacuation-route", evacuationRoutes);
 
 // Global 404 Route
 app.use((_req, res) => {

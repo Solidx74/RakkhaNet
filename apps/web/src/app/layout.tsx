@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import ReactQueryProvider from "@/components/providers/ReactQueryProvider";
+import OfflineBanner from "@/components/OfflineBanner";
 
 export const metadata: Metadata = {
   title: "RakkhaNet — AI Disaster Response Platform for Bangladesh",
-  description: "AI-powered emergency shelter locator, flood & cyclone risk map, and relief coordination system.",
+  description: "AI-powered emergency shelter locator, flood & cyclone risk map, and evacuation guidance.",
+  manifest: "/manifest.json",
+  themeColor: "#0d1117",
 };
 
 export default function RootLayout({
@@ -24,6 +27,7 @@ export default function RootLayout({
       </head>
       <body className="min-h-screen bg-[#0d1117] text-white antialiased">
         <ReactQueryProvider>
+          <OfflineBanner />
           {children}
         </ReactQueryProvider>
       </body>

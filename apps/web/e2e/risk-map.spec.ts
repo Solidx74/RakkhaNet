@@ -3,7 +3,7 @@ import { test, expect } from "@playwright/test";
 test.describe("Risk Map Module End-to-End Tests", () => {
   test("User can navigate to Risk Map page and search risk zones by region", async ({ page }) => {
     // Navigate to Risk Map page
-    await page.goto("http://localhost:3000/risk-map");
+    await page.goto("/risk-map");
 
     // Verify page heading
     await expect(page.locator("h1")).toContainText("RiskMap");

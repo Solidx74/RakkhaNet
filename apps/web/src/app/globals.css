@@ -7,11 +7,11 @@
   --foreground: 210 40% 98%;
   --border: 217.2 32.6% 17.5%;
   --input: 217.2 32.6% 17.5%;
-  --ring: 160 84% 39%;
+  --ring: 199 89% 48%;
 }
 
 body {
-  background-color: #0d1117;
+  background-color: #0F172A;
   color: #f0f6fc;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   margin: 0;

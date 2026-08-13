@@ -1,0 +1,9 @@
+**/node_modules
+**/dist
+**/.turbo
+.pnpm-store
+.git
+.env
+.env.*
+coverage
+test-results

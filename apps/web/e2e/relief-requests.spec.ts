@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 
 test.describe("Relief requests & Coordinator Dashboard End-to-End Tests", () => {
   test("Citizen can submit relief request successfully", async ({ page }) => {
-    await page.goto("http://localhost:3000/relief-requests/new");
+    await page.goto("/relief-requests/new");
 
     await expect(page.locator("h2")).toContainText("Submit Request for Emergency Aid");
 

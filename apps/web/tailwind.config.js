@@ -15,9 +15,11 @@ module.exports = {
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
         primary: {
-          DEFAULT: "#006A4E", // Bangladesh Bottle Green
+          DEFAULT: "#0F172A",
           foreground: "#ffffff",
         },
+        accent: "#0EA5E9",
+        muted: "#6B7280",
         danger: {
           DEFAULT: "#F42A41", // Bangladesh Red
           foreground: "#ffffff",

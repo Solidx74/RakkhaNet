@@ -6,7 +6,8 @@
     "dev": "next dev -p 3000",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@rakkhanet/shared-types": "workspace:*",
@@ -21,13 +22,14 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-hook-form": "^7.52.0",
-    "react-leaflet": "^5.0.0",
+    "react-leaflet": "^4.2.1",
     "socket.io-client": "^4.7.5",
     "tailwind-merge": "^2.3.0",
     "zod": "^3.23.8",
     "zustand": "^4.5.4"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@types/node": "^20.14.9",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",

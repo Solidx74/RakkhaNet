@@ -1,7 +1,9 @@
 import { test, expect } from "@playwright/test";
+import { authenticateAsE2EAdmin } from "./helpers/auth";
 
 test.describe("Evacuation Guidance Module End-to-End Tests", () => {
   test.beforeEach(async ({ page, context }) => {
+    await authenticateAsE2EAdmin(page);
     // Mock user geolocation to Chattogram, Bangladesh [lat: 22.35, lng: 91.80]
     await context.setGeolocation({ latitude: 22.35, longitude: 91.80 });
     await context.grantPermissions(["geolocation"]);
@@ -9,7 +11,7 @@ test.describe("Evacuation Guidance Module End-to-End Tests", () => {
 
   test("User can navigate from Shelter Locator to Evacuation Guidance and view step-by-step route", async ({ page }) => {
     // 1. Visit Evacuation Guidance Page directly
-    await page.goto("http://localhost:3000/evacuation");
+    await page.goto("/evacuation");
 
     // 2. Check page heading
     await expect(page.locator("h1")).toContainText("EvacuationGuidance");

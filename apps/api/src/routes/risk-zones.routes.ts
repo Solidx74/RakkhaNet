@@ -8,6 +8,7 @@ import {
   calculateRiskScore,
 } from "@rakkhanet/shared-types";
 import { authenticate, requireRole, AuthenticatedRequest } from "../middleware/auth.middleware";
+import { refreshLimiter } from "../middleware/rate-limiter.middleware";
 
 const router = Router();
 
@@ -116,6 +117,7 @@ router.get("/intersects", async (req, res: Response) => {
 // ==========================================
 router.post(
   "/refresh",
+  refreshLimiter,
   authenticate,
   requireRole(["ADMIN", "COORDINATOR"]),
   async (req: AuthenticatedRequest, res: Response) => {

@@ -6,7 +6,13 @@ import { SignUpDTO, SignInDTO } from "@rakkhanet/shared-types";
 import { authenticate, AuthenticatedRequest } from "../middleware/auth.middleware";
 
 const router = Router();
-const JWT_SECRET = process.env.JWT_SECRET || "rakkhanet_super_secret_jwt_key_2026";
+function getJwtSecret(): string {
+  const secret = process.env.JWT_SECRET?.trim();
+  if (!secret) {
+    throw new Error("[Configuration] JWT_SECRET must be configured before the API starts.");
+  }
+  return secret;
+}
 
 // POST /api/auth/sign-up
 router.post("/sign-up", async (req: AuthenticatedRequest, res: Response) => {
@@ -56,7 +62,7 @@ router.post("/sign-up", async (req: AuthenticatedRequest, res: Response) => {
 
     const token = jwt.sign(
       { id: userId, email: newUser.email, role: newUser.role, district: newUser.district },
-      JWT_SECRET,
+      getJwtSecret(),
       { expiresIn: "7d" }
     );
 
@@ -121,7 +127,7 @@ router.post("/sign-in", async (req: AuthenticatedRequest, res: Response) => {
     const userId = user._id.toString();
     const token = jwt.sign(
       { id: userId, email: user.email, role: user.role, district: user.district },
-      JWT_SECRET,
+      getJwtSecret(),
       { expiresIn: "7d" }
     );
 

@@ -3,20 +3,32 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-const MONGODB_URI = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/rakkhanet";
-const DB_NAME = process.env.MONGODB_DB_NAME || "rakkhanet";
-
 let client: MongoClient | null = null;
 let db: Db | null = null;
+
+function getDatabaseConfig() {
+  const uri = process.env.MONGODB_URI?.trim();
+  const name = process.env.MONGODB_DB_NAME?.trim();
+
+  if (process.env.NODE_ENV === "production" && (!uri || !name)) {
+    throw new Error("[Configuration] MONGODB_URI and MONGODB_DB_NAME are required in production.");
+  }
+
+  return {
+    uri: uri || "mongodb://127.0.0.1:27017/rakkhanet",
+    name: name || "rakkhanet",
+  };
+}
 
 export async function connectDB(): Promise<Db> {
   if (db) return db;
 
   try {
-    client = new MongoClient(MONGODB_URI);
+    const { uri, name } = getDatabaseConfig();
+    client = new MongoClient(uri);
     await client.connect();
-    db = client.db(DB_NAME);
-    console.log(`[Database] Successfully connected to MongoDB Atlas database: ${DB_NAME}`);
+    db = client.db(name);
+    console.log(`[Database] Successfully connected to MongoDB Atlas database: ${name}`);
 
     // Initialize 2dsphere indexes for geospatial collections asynchronously
     await initIndexes(db);
@@ -33,6 +45,10 @@ export function getDB(): Db {
     throw new Error("[Database] DB not initialized. Call connectDB first.");
   }
   return db;
+}
+
+export function isDatabaseConnected(): boolean {
+  return db !== null;
 }
 
 async function initIndexes(database: Db) {

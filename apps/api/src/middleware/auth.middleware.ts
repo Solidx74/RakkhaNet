@@ -13,7 +13,13 @@ export interface AuthenticatedRequest extends Request {
   user?: AuthenticatedUser;
 }
 
-const JWT_SECRET = process.env.JWT_SECRET || "rakkhanet_super_secret_jwt_key_2026";
+function getJwtSecret(): string {
+  const secret = process.env.JWT_SECRET?.trim();
+  if (!secret) {
+    throw new Error("[Configuration] JWT_SECRET must be configured before the API starts.");
+  }
+  return secret;
+}
 
 export const authenticate = (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   const authHeader = req.headers.authorization;
@@ -29,7 +35,7 @@ export const authenticate = (req: AuthenticatedRequest, res: Response, next: Nex
   }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as AuthenticatedUser;
+    const decoded = jwt.verify(token, getJwtSecret()) as AuthenticatedUser;
     req.user = decoded;
     next();
   } catch (error) {

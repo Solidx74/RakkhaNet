@@ -5,6 +5,7 @@ import { getDB } from "../config/db";
 import { emitRealTimeEvent } from "../config/socket";
 import { NotificationSchema } from "@rakkhanet/shared-types";
 import { authenticate, requireRole, AuthenticatedRequest } from "../middleware/auth.middleware";
+import { broadcastLimiter } from "../middleware/rate-limiter.middleware";
 
 const router = Router();
 
@@ -74,14 +75,17 @@ const smsProvider = new MockSMSProvider();
 // ==========================================
 router.post(
   "/broadcast",
+  broadcastLimiter,
   authenticate,
   requireRole(["ADMIN"]),
   async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const { targetDistrict, title, message, channel } = req.body;
-      if (!title || !message || !channel) {
-        return res.status(400).json({ success: false, message: "Missing title, message, or channel" });
+      const parseResult = NotificationSchema.pick({ targetDistrict: true, title: true, message: true, channel: true }).safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ success: false, message: "Invalid broadcast payload", errors: parseResult.error.errors });
       }
+
+      const { targetDistrict, title, message, channel } = parseResult.data;
 
       const db = getDB();
 

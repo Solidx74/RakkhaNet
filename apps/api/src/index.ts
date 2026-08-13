@@ -3,8 +3,10 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
 import { createServer } from "http";
-import { connectDB } from "./config/db";
+import { connectDB, isDatabaseConnected } from "./config/db";
 import { initSocket } from "./config/socket";
+import { validateEnvironment } from "./config/env";
+import { authLimiter } from "./middleware/rate-limiter.middleware";
 import authRoutes from "./routes/auth.routes";
 import shelterRoutes from "./routes/shelters.routes";
 import riskZoneRoutes from "./routes/risk-zones.routes";
@@ -15,6 +17,7 @@ import dashboardRoutes from "./routes/dashboard.routes";
 import notificationsRoutes from "./routes/notifications.routes";
 
 dotenv.config();
+validateEnvironment();
 
 const app = express();
 const httpServer = createServer(app);
@@ -33,15 +36,17 @@ app.use(cookieParser());
 
 // Healthcheck Route
 app.get("/api/health", (_req, res) => {
-  res.json({
-    status: "online",
+  const databaseConnected = isDatabaseConnected();
+  res.status(databaseConnected ? 200 : 503).json({
+    status: databaseConnected ? "online" : "degraded",
     service: "RakkhaNet Express Core API",
+    database: databaseConnected ? "connected" : "disconnected",
     timestamp: new Date().toISOString(),
   });
 });
 
 // API Module Routes
-app.use("/api/auth", authRoutes);
+app.use("/api/auth", authLimiter, authRoutes);
 app.use("/api/shelters", shelterRoutes);
 app.use("/api/risk-zones", riskZoneRoutes);
 app.use("/api/evacuation-route", evacuationRoutes);

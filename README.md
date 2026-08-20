@@ -1,109 +1,288 @@
 # RakkhaNet
 
-**AI-Powered Disaster Response & Relief Coordination Platform for Bangladesh**
+**AI-Assisted Disaster Response & Relief Coordination for Bangladesh**
 
-RakkhaNet unifies flood/cyclone risk visualization, evacuation guidance, shelter location, and relief coordination into a single role-based web platform — built for citizens, volunteers, NGOs, and government responders.
+RakkhaNet is a full-stack, role-based platform that unifies flood/cyclone risk visualization, evacuation guidance, shelter location, and relief coordination into a single system. It brings together AI-assisted risk scoring, live geospatial search, and real-time coordination tools to help citizens, volunteers, NGOs, and government responders answer three questions in one place: *How dangerous is my area? Where should I go? Who can help me?*
 
-> CSE-300 (Software Development Sessional) project — Department of CSE, Chittagong University of Engineering & Technology (CUET). Submitted to Md. Atiqul Islam Rizvi, Assistant Professor, Dept. of CSE.
+`Next.js` `Express` `MongoDB` `Socket.io` `FastAPI` `Docker`
 
----
+**🔗 Live App**: [rakkhanet.vercel.app](https://rakkhanet.vercel.app) · **API**: [rakkhanet-api.onrender.com](https://rakkhanet-api.onrender.com/api/health) · **AI Service**: [rakkhanet-ai.onrender.com](https://rakkhanet-ai.onrender.com)
 
-## The Problem
-
-Bangladesh faces recurring riverine floods, flash floods, and cyclones affecting millions annually. Information is fragmented across the Flood Forecasting and Warning Centre (FFWC), the Bangladesh Meteorological Department (BMD), government portals, and informal social media groups — leaving citizens without one reliable place to check risk, find safety, and get help.
-
-RakkhaNet answers three questions in one place: **How dangerous is my area? Where should I go? Who can help me?**
+> Backend runs on Render's free tier and may take 30–50 seconds to wake up after inactivity.
 
 ---
 
-## Core Modules
+## 🌟 Core Features
 
-| Module | Description |
+| Feature | Description |
 |---|---|
-| 🌊 **Flood & Cyclone Risk Map** | Interactive, color-coded hazard map (Low/Medium/High/Severe) driven by rainfall, river-level, and elevation data |
-| 🧭 **Evacuation Guidance** | Road-aligned routing to the nearest open shelter |
-| 🏠 **Shelter Locator** | Geospatially indexed directory with live capacity and resource tracking |
-| 📋 **Relief Coordination Dashboard** | Request intake, triage, and volunteer dispatch for coordinators |
-| 🔔 **Alerts & Notifications** | Region-scoped push/email alerts, SMS-ready via provider abstraction |
-| 🔐 **Auth & Role Management** | Role-based access for Citizen, Volunteer, Coordinator, and Administrator |
+| **Flood & Cyclone Risk Mapping** | Interactive, color-coded hazard map (Low/Medium/High/Severe/Critical) built from a rule-based heuristic engine, with live OpenWeather data ingestion for real-time recalculation |
+| **Emergency Shelter Locator** | Geospatially indexed shelter directory (MongoDB `2dsphere` + `$geoNear`) with live capacity, resources, and occupancy status |
+| **Safe Evacuation Guidance** | Road-aligned routing via OSRM to the nearest open shelter, with automatic haversine fallback when routing is unavailable |
+| **Relief Coordination Dashboard** | Real-time relief-request intake with AI-assisted keyword priority scoring, volunteer assignment, and resource inventory tracking |
+| **Alerts & Broadcasts** | Region-scoped, multi-channel alerts (in-app/WebSocket, email, SMS-ready) with a live notification feed |
+| **Secure Role-Based Auth** | JWT + role-based access control for Citizen, Volunteer, Coordinator, and Administrator roles, with rate-limited auth endpoints |
+| **Offline-Ready PWA** | Service-worker caching for shelters, risk zones, and routes so core information stays usable on poor connectivity |
 
 ---
 
-## Tech Stack
+## 🛠 Tech Stack
 
-**Frontend** — Next.js 14 (App Router, TypeScript) · Tailwind CSS · shadcn/ui · Leaflet/React-Leaflet · TanStack Query · Zustand · React Hook Form + Zod · next-pwa
-
-**Backend** — Express.js (TypeScript) · MongoDB (native driver, 2dsphere geospatial indexing) · Socket.io · Better Auth + JWT
-
-**AI Service** — Python FastAPI (risk scoring & relief-request triage)
-
-**Infra** — Turborepo monorepo · pnpm workspaces · Docker
+| Layer | Technologies |
+|---|---|
+| **Frontend** | Next.js 14 (App Router, TypeScript), Tailwind CSS, shadcn/ui, Leaflet / React-Leaflet 4.x, TanStack Query, Zustand, React Hook Form + Zod, next-pwa |
+| **Backend** | Express.js (TypeScript), MongoDB (native driver, 2dsphere geospatial indexing), Socket.io, Better Auth + JWT, express-rate-limit |
+| **AI Service** | Python FastAPI — rule-based risk scoring & relief-request triage |
+| **External Data** | OpenWeather API (live weather feed), OSRM (public routing) |
+| **Infra** | Turborepo monorepo, pnpm workspaces, Docker, Vercel (frontend), Render (backend + AI service), MongoDB Atlas |
+| **Testing** | Vitest (unit/integration), Playwright (E2E, isolated MongoDB Memory Server harness) |
 
 ---
 
-## Project Structure
+## 🏗 System Architecture
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│                        CLIENT TIER                           │
+│   Next.js 14 + Zustand + Tailwind + Leaflet (Vercel)          │
+│   Risk map → Shelter search → Evacuation → Relief requests    │
+└────────────────────────┬───────────────────────────────────────┘
+                          │ HTTPS + JWT Bearer / Socket.io
+┌─────────────────────────▼──────────────────────────────────────┐
+│                        API GATEWAY                              │
+│   Express.js + Socket.io (Render)                               │
+│   JWT + RBAC + rate limiting → Route handlers → Zod validation   │
+└──────┬──────────────────┬──────────────────┬───────────────────┘
+       │                  │                  │
+┌──────▼──────┐   ┌───────▼────────┐  ┌──────▼─────────────────┐
+│  MongoDB    │   │  AI Service    │  │  External APIs         │
+│  Atlas      │   │  (FastAPI,     │  │                        │
+│             │   │   Render)      │  │  OpenWeather (rainfall)│
+│  users      │   │  risk scoring  │  │  OSRM (routing)        │
+│  shelters   │   │  triage scorer │  │                        │
+│  risk_zones │   │                │  │                        │
+│  requests   │   │                │  │                        │
+└─────────────┘   └────────────────┘  └────────────────────────┘
+```
+
+**Flow:**
+1. Citizen checks local risk map or requests evacuation guidance — API queries `risk_zones`/`shelters` with geospatial indexes.
+2. Relief requests are auto-scored for priority via keyword/severity heuristics and routed to coordinators in real time via Socket.io.
+3. Coordinators assign volunteers and manage resource inventory from a live dashboard.
+4. Admins can trigger region-scoped broadcasts across in-app, email, and SMS channels.
+5. Risk scores refresh using live OpenWeather data, falling back to seeded/manual data if the API is unavailable.
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+- Node.js 20+ / 22 (Docker builds use Node 22 for pnpm 11 compatibility)
+- pnpm 9+
+- MongoDB Atlas cluster (free M0 tier works) or local MongoDB instance
+- Python 3.11+ (for the AI service)
+- OpenWeather API key — free at [openweathermap.org/api](https://openweathermap.org/api)
+- Docker Desktop (optional, for container builds)
+
+### 1. Clone the repository
+```bash
+git clone https://github.com/Solidx74/RakkhaNet.git
+cd RakkhaNet
+```
+
+### 2. Install dependencies
+```bash
+pnpm install
+```
+
+### 3. Configure environment variables
+
+Copy the templates and fill in real values:
+```bash
+cp apps/api/.env.example apps/api/.env
+cp apps/web/.env.example apps/web/.env
+```
+
+`apps/api/.env`:
+```
+PORT=5000
+NODE_ENV=development
+CLIENT_URL=http://localhost:3000
+MONGODB_URI=mongodb+srv://<user>:<pass>@cluster0.xxxxx.mongodb.net/rakkhanet?retryWrites=true&w=majority
+MONGODB_DB_NAME=rakkhanet
+JWT_SECRET=<random 32+ char string>
+JWT_EXPIRES_IN=7d
+BETTER_AUTH_SECRET=<random 32+ char string>
+BETTER_AUTH_URL=http://localhost:5000
+OPENWEATHER_API_KEY=<your key>
+AI_SERVICE_URL=http://localhost:8000
+```
+
+`apps/web/.env`:
+```
+NEXT_PUBLIC_API_URL=http://localhost:5000
+NEXT_PUBLIC_SOCKET_URL=http://localhost:5000
+NEXT_PUBLIC_MAP_TILE_URL=https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png
+NEXT_PUBLIC_MAP_ATTRIBUTION=&copy; OpenStreetMap contributors
+```
+
+> ⚠️ Never commit `.env` files with real credentials — only `.env.example` templates are tracked.
+
+### 4. Seed the database
+```bash
+pnpm --filter @rakkhanet/api seed:shelters
+pnpm --filter @rakkhanet/api seed:risk-zones
+```
+
+### 5. Run all services
+```bash
+pnpm turbo dev
+```
+
+- ✅ Web: `http://localhost:3000`
+- ✅ API: `http://localhost:5000` (health check at `/api/health`)
+- ✅ AI Service: `http://localhost:8000`
+
+---
+
+## 🧪 Testing
+
+```bash
+pnpm --filter @rakkhanet/api test      # Vitest — unit/integration
+pnpm test:e2e                           # Playwright — end-to-end
+```
+
+- **Unit/Integration** (Vitest): geospatial queries, RBAC enforcement, priority scoring, weather-fallback logic. 25 tests across 7 suites.
+- **End-to-End** (Playwright): shelter discovery, evacuation routing, request submission, and broadcast delivery flows — run against an isolated MongoDB Memory Server harness with seeded fixtures, fully decoupled from production/dev data.
+
+---
+
+## 🐳 Docker
+
+```bash
+docker build -f apps/api/Dockerfile -t rakkhanet-api .
+docker build -f apps/ai-service/Dockerfile -t rakkhanet-ai apps/ai-service
+
+docker run -p 5000:5000 --env-file apps/api/.env rakkhanet-api
+docker run -p 8000:8000 rakkhanet-ai
+```
+
+---
+
+## ☁️ Deployment
+
+| Service | Platform | Live URL |
+|---|---|---|
+| Frontend | Vercel | [rakkhanet.vercel.app](https://rakkhanet.vercel.app) |
+| Backend API | Render | [rakkhanet-api.onrender.com](https://rakkhanet-api.onrender.com) |
+| AI Service | Render | [rakkhanet-ai.onrender.com](https://rakkhanet-ai.onrender.com) |
+| Database | MongoDB Atlas | — |
+
+### Production Environment Variables
+
+**Backend (`apps/api` on Render):**
+
+| Variable | Notes |
+|---|---|
+| `MONGODB_URI` | Atlas production connection string |
+| `MONGODB_DB_NAME` | `rakkhanet` |
+| `JWT_SECRET` | Random secure string — required, no fallback |
+| `BETTER_AUTH_SECRET` | Random secure string |
+| `BETTER_AUTH_URL` | `https://rakkhanet-api.onrender.com` |
+| `CLIENT_URL` | `https://rakkhanet.vercel.app` — locks down CORS in production |
+| `OPENWEATHER_API_KEY` | Enables live rainfall-driven risk scoring |
+| `AI_SERVICE_URL` | `https://rakkhanet-ai.onrender.com` |
+| `NODE_ENV` | `production` |
+
+**Frontend (`apps/web` on Vercel):**
+
+| Variable | Notes |
+|---|---|
+| `NEXT_PUBLIC_API_URL` | `https://rakkhanet-api.onrender.com` |
+| `NEXT_PUBLIC_SOCKET_URL` | `https://rakkhanet-api.onrender.com` |
+| `NEXT_PUBLIC_MAP_TILE_URL` | OpenStreetMap tile server |
+| `NEXT_PUBLIC_MAP_ATTRIBUTION` | OSM attribution string |
+
+---
+
+## 📁 Project Structure
 
 ```
 rakkhanet/
 ├── apps/
-│   ├── web/            # Next.js 14 frontend
-│   ├── api/             # Express.js backend
-│   └── ai-service/       # Python FastAPI microservice
+│   ├── web/                    # Next.js 14 frontend
+│   │   ├── app/
+│   │   │   ├── shelters/
+│   │   │   ├── risk-map/
+│   │   │   ├── evacuation/
+│   │   │   ├── dashboard/
+│   │   │   └── admin/broadcast/
+│   │   ├── components/
+│   │   ├── e2e/                 # Playwright specs + fixture harness
+│   │   └── store/
+│   ├── api/                     # Express.js backend
+│   │   ├── src/
+│   │   │   ├── routes/
+│   │   │   ├── middleware/       # auth, RBAC, rate limiting
+│   │   │   ├── services/          # weather.service.ts
+│   │   │   ├── config/            # db.ts, socket.ts
+│   │   │   └── __tests__/         # Vitest suites
+│   │   └── Dockerfile
+│   └── ai-service/               # Python FastAPI microservice
+│       ├── app/main.py
+│       └── Dockerfile
 ├── packages/
-│   └── shared-types/     # Shared Zod schemas & TS interfaces
-├── implementation.md      # Full architecture & build blueprint
+│   └── shared-types/              # Shared Zod schemas & TS interfaces
+├── implementation.md               # Full architecture & build blueprint
+├── walkthrough.md                  # Sprint-by-sprint build summary
 └── turbo.json
 ```
 
-See [`implementation.md`](./implementation.md) for the complete database schema, API contract, auth architecture, and sprint plan.
+---
+
+## 🔌 API Reference
+
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| POST | `/api/auth/sign-up` | ❌ | Create account (rate-limited) |
+| POST | `/api/auth/sign-in` | ❌ | Login, receive JWT (rate-limited) |
+| GET | `/api/auth/me` | ✅ | Get current user |
+| GET | `/api/shelters/nearby` | ✅ | Nearest shelters via geospatial query |
+| GET | `/api/shelters` | ✅ | List/filter shelters |
+| POST | `/api/shelters` | ✅ Admin/Coordinator | Register shelter |
+| GET | `/api/risk-zones` | ✅ | List/filter hazard zones |
+| POST | `/api/risk-zones/refresh` | ✅ Admin/Coordinator | Recalculate risk from live weather data (rate-limited) |
+| GET | `/api/evacuation-route` | ✅ | Route + directions to nearest shelter |
+| POST | `/api/relief-requests` | ✅ | Submit relief request |
+| PATCH | `/api/relief-requests/:id/assign` | ✅ Admin/Coordinator | Assign volunteer |
+| GET | `/api/dashboard/stats` | ✅ Admin/Coordinator | Aggregated coordination metrics |
+| POST | `/api/notifications/broadcast` | ✅ Admin | Send region-scoped alert (rate-limited) |
+| GET | `/api/health` | ❌ | Health check — reflects live DB connection status |
 
 ---
 
-## Getting Started
+## ✅ Development Status
 
-### Prerequisites
-- Node.js 20+
-- pnpm 9+
-- MongoDB Atlas account (free tier works) or local MongoDB instance
-- Python 3.11+ (for the AI service)
+All core modules complete, verified, and deployed:
 
-### Setup
+- [x] Auth & Role Management (JWT, RBAC, rate-limited)
+- [x] Shelter Locator (geospatial `$geoNear`)
+- [x] Flood & Cyclone Risk Mapping (live weather-driven scoring)
+- [x] Evacuation Guidance & Offline PWA
+- [x] Relief Coordination Dashboard (real-time via Socket.io)
+- [x] Alerts & Broadcasts (in-app, email, SMS-ready)
+- [x] Security hardening (production env validation, no fallback secrets, Zod payload bounds)
+- [x] Test coverage (25 Vitest tests, 5 Playwright E2E specs against isolated fixtures)
+- [x] Dockerized & verified (`apps/api`, `apps/ai-service`)
+- [x] Deployed — Vercel (frontend) + Render (API + AI service) + MongoDB Atlas
 
-```bash
-# Clone
-git clone https://github.com/Solidx74/RakkhaNet.git
-cd RakkhaNet
-
-# Install dependencies
-pnpm install
-
-# Configure environment variables
-cp apps/api/.env.example apps/api/.env
-cp apps/web/.env.example apps/web/.env
-# Fill in MONGODB_URI, JWT secrets, etc.
-
-# Run all services
-pnpm turbo dev
-```
-
-- Web: `http://localhost:3000`
-- API: `http://localhost:5000` (health check at `/api/health`)
-- AI Service: `http://localhost:8000`
+**Project is feature-complete, tested, and live.**
 
 ---
 
-## Development Status
+## 📜 License
 
-Actively in development. See [`implementation.md`](./implementation.md) for the sprint-by-sprint build plan.
-
-- [x] Sprint 1 — Monorepo foundation, auth, shared types
-- [ ] Sprint 2 — Shelter locator & geospatial database
-- [ ] Sprint 3 — Risk map
-- [ ] Sprint 4 — Evacuation guidance
-- [ ] Sprint 5 — Relief coordination dashboard
-- [ ] Sprint 6+ — AI risk scoring, SMS alerts, testing & deployment
-
----
+Distributed under the MIT License. This project is open for educational and humanitarian use.
 
 ## Team
 
@@ -115,7 +294,3 @@ Actively in development. See [`implementation.md`](./implementation.md) for the 
 | Arpon Chakma | 2204132 |
 
 ---
-
-## License
-
-Academic project — CUET CSE-300 Sessional, 2026.

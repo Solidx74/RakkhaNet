@@ -1,0 +1,8 @@
+{
+  "name": "rakkhanet",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
+}

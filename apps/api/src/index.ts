@@ -7,6 +7,8 @@ import { createAuth } from "./auth.js";
 import { requestLogger } from "./middleware/logger.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { requireAuth, requireRole } from "./middleware/requireAuth.js";
+import { createShelterRouter } from "./routes/shelters.js";
+import { createRiskZoneRouter } from "./routes/riskZones.js";
 
 async function main() {
   await connectToDatabase();
@@ -50,9 +52,14 @@ async function main() {
 
   // Stub routes for the four feature areas -- replaced with real routers as
   // each phase is built. Kept here so the frontend has something to hit.
-  app.get("/api/shelters", (_req, res) => res.json({ shelters: [] }));
-  app.get("/api/risk-zones", (_req, res) => res.json({ riskZones: [] }));
+  app.use("/api/shelters", createShelterRouter(auth));
+  app.use("/api/risk-zones", createRiskZoneRouter(auth));
+
+  // Still a stub -- relief_requests is Phase 3.
   app.get("/api/relief-requests", (_req, res) => res.json({ requests: [] }));
+  // app.get("/api/shelters", (_req, res) => res.json({ shelters: [] }));
+  // app.get("/api/risk-zones", (_req, res) => res.json({ riskZones: [] }));
+  // app.get("/api/relief-requests", (_req, res) => res.json({ requests: [] }));
 
   // Must be mounted LAST.
   app.use(errorHandler);

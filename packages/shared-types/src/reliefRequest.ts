@@ -9,7 +9,7 @@ export const reliefRequestCreateSchema = z.object({
   // Set by the citizen as a first guess; AI triage in Phase 3 may override this.
   priority: z.enum(["low", "medium", "high", "critical"]).default("medium"),
 });
-export type ReliefRequestCreateInput = z.infer<
+export type ReliefRequestCreateInput = z.input<
   typeof reliefRequestCreateSchema
 >;
 

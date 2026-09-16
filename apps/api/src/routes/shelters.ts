@@ -73,14 +73,12 @@ export function createShelterRouter(auth: Auth) {
       const result = await getDb()
         .collection("shelters")
         .insertOne({ ...input, createdAt: now, updatedAt: now });
-      res
-        .status(201)
-        .json({
-          _id: result.insertedId,
-          ...input,
-          createdAt: now,
-          updatedAt: now,
-        });
+      res.status(201).json({
+        _id: result.insertedId,
+        ...input,
+        createdAt: now,
+        updatedAt: now,
+      });
     }),
   );
 

@@ -9,6 +9,7 @@ import { errorHandler } from "./middleware/errorHandler.js";
 import { requireAuth, requireRole } from "./middleware/requireAuth.js";
 import { createShelterRouter } from "./routes/shelters.js";
 import { createRiskZoneRouter } from "./routes/riskZones.js";
+import { createEvacuationRouter } from "./routes/evacuation.js";
 
 async function main() {
   await connectToDatabase();
@@ -54,6 +55,7 @@ async function main() {
   // each phase is built. Kept here so the frontend has something to hit.
   app.use("/api/shelters", createShelterRouter(auth));
   app.use("/api/risk-zones", createRiskZoneRouter(auth));
+  app.use("/api/evacuation", createEvacuationRouter());
 
   // Still a stub -- relief_requests is Phase 3.
   app.get("/api/relief-requests", (_req, res) => res.json({ requests: [] }));

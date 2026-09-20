@@ -3,6 +3,7 @@ import type {
   RiskZone,
   ReliefRequest,
   ReliefRequestCreateInput,
+  Resource,
 } from "@rakkhanet/shared-types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
@@ -62,4 +63,66 @@ export async function submitReliefRequest(
   if (!res.ok) throw new Error("Failed to submit request");
   const data = await res.json();
   return data.request;
+}
+
+export async function fetchAllReliefRequests(): Promise<ReliefRequest[]> {
+  // No ?mine=true -- returns everything the caller's role is allowed to see
+  // (operational roles get the full pool; see reliefRequests.ts).
+  const data = await apiFetch<{ requests: ReliefRequest[] }>(
+    "/api/relief-requests",
+  );
+  return data.requests;
+}
+
+export async function assignReliefRequest(
+  requestId: string,
+  volunteerId: string,
+): Promise<ReliefRequest> {
+  const res = await fetch(
+    `${API_URL}/api/relief-requests/${requestId}/assign`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ volunteerId }),
+    },
+  );
+  if (!res.ok) throw new Error("Failed to assign request");
+  return (await res.json()).request;
+}
+
+export async function updateReliefRequestStatus(
+  requestId: string,
+  status: ReliefRequest["status"],
+): Promise<ReliefRequest> {
+  const res = await fetch(
+    `${API_URL}/api/relief-requests/${requestId}/status`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ status }),
+    },
+  );
+  if (!res.ok) throw new Error("Failed to update status");
+  return (await res.json()).request;
+}
+
+export async function fetchResources(): Promise<Resource[]> {
+  const data = await apiFetch<{ resources: Resource[] }>("/api/resources");
+  return data.resources;
+}
+
+export async function updateResourceQuantity(
+  resourceId: string,
+  quantity: number,
+): Promise<Resource> {
+  const res = await fetch(`${API_URL}/api/resources/${resourceId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ quantity }),
+  });
+  if (!res.ok) throw new Error("Failed to update resource");
+  return (await res.json()).resource;
 }

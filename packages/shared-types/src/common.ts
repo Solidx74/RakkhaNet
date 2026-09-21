@@ -31,7 +31,16 @@ export const userRoleSchema = z.enum([
 ]);
 export type UserRole = z.infer<typeof userRoleSchema>;
 
-/** MongoDB ObjectId represented as its 24-char hex string over the wire. */
+/** MongoDB ObjectId represented as its 24-char hex string over the wire.
+ *  Use this for _id fields of OUR OWN native-driver collections (shelters,
+ *  risk_zones, relief_requests, etc.) -- we control those IDs. */
 export const objectIdStringSchema = z
   .string()
   .regex(/^[0-9a-fA-F]{24}$/, "Must be a valid MongoDB ObjectId");
+
+/** References a user managed by Better Auth. Deliberately NOT validated as
+ *  a Mongo ObjectId -- Better Auth generates its own ID format, which is
+ *  not guaranteed to be a 24-char hex string. Use this (not
+ *  objectIdStringSchema) for any field that points at a user, e.g.
+ *  requesterId, assignedVolunteerId. */
+export const userIdStringSchema = z.string().min(1);

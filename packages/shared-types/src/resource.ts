@@ -14,3 +14,6 @@ export const resourceSchema = resourceCreateSchema.extend({
   lastRestocked: z.coerce.date(),
 });
 export type Resource = z.infer<typeof resourceSchema>;
+
+export const resourceUpdateSchema = resourceCreateSchema.partial();
+export type ResourceUpdateInput = z.infer<typeof resourceUpdateSchema>;

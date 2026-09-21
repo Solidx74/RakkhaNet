@@ -18,6 +18,7 @@ const SELF_SIGNUP_ROLES = ["citizen", "volunteer"] as const;
 
 export function createAuth(db: Db, client: MongoClient) {
   return betterAuth({
+    baseURL: process.env.BETTER_AUTH_URL ?? "http://localhost:8080",
     database: mongodbAdapter(db, { client }),
 
     emailAndPassword: {

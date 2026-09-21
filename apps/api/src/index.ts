@@ -1,14 +1,22 @@
 import "dotenv/config";
+import { createServer } from "http";
 import cors from "cors";
 import express from "express";
-import { toNodeHandler } from "better-auth/node";
+import { Server as SocketIOServer } from "socket.io";
+import { toNodeHandler, fromNodeHeaders } from "better-auth/node";
 import { connectToDatabase, getDb, getMongoClient } from "./db/connection.js";
 import { createAuth } from "./auth.js";
 import { requestLogger } from "./middleware/logger.js";
-import { errorHandler } from "./middleware/errorHandler.js";
+import {
+  errorHandler,
+  asyncHandler,
+  ApiError,
+} from "./middleware/errorHandler.js";
 import { requireAuth, requireRole } from "./middleware/requireAuth.js";
 import { createShelterRouter } from "./routes/shelters.js";
 import { createRiskZoneRouter } from "./routes/riskZones.js";
+import { createReliefRequestRouter } from "./routes/reliefRequests.js";
+import { createResourceRouter } from "./routes/resources.js";
 import { createEvacuationRouter } from "./routes/evacuation.js";
 
 async function main() {
@@ -36,9 +44,6 @@ async function main() {
     res.json({ status: "ok" });
   });
 
-  // Example protected route -- Phase 2+ features follow this same pattern:
-  // requireAuth(auth) alone for "any logged-in user", plus requireRole(...)
-  // for admin-only mutations like creating a shelter.
   app.get("/api/me", requireAuth(auth), (req, res) => {
     res.json({ user: req.user });
   });
@@ -51,23 +56,56 @@ async function main() {
     },
   );
 
-  // Stub routes for the four feature areas -- replaced with real routers as
-  // each phase is built. Kept here so the frontend has something to hit.
   app.use("/api/shelters", createShelterRouter(auth));
   app.use("/api/risk-zones", createRiskZoneRouter(auth));
+  app.use("/api/resources", createResourceRouter(auth));
   app.use("/api/evacuation", createEvacuationRouter());
 
-  // Still a stub -- relief_requests is Phase 3.
-  app.get("/api/relief-requests", (_req, res) => res.json({ requests: [] }));
-  // app.get("/api/shelters", (_req, res) => res.json({ shelters: [] }));
-  // app.get("/api/risk-zones", (_req, res) => res.json({ riskZones: [] }));
-  // app.get("/api/relief-requests", (_req, res) => res.json({ requests: [] }));
+  // Socket.io shares the same HTTP server as Express -- not a separate
+  // port/process. Created here, before errorHandler, because
+  // createReliefRequestRouter needs `io` to broadcast on
+  // create/assign/status-change, and that router -- like every route --
+  // must be mounted before the error handler, not after.
+  const httpServer = createServer(app);
+  const io = new SocketIOServer(httpServer, {
+    cors: {
+      origin: process.env.WEB_ORIGIN ?? "http://localhost:3000",
+      credentials: true,
+    },
+  });
 
-  // Must be mounted LAST.
+  app.use("/api/relief-requests", createReliefRequestRouter(auth, io));
+
+  // Temporary diagnostic route for 4a-6 -- proves the full chain (Express
+  // mints a JWT via Better Auth -> AI service verifies it against Better
+  // Auth's JWKS) actually works end-to-end. Superseded once 4b/4c add real
+  // AI routes that use the same token-minting pattern; safe to delete then.
+  app.get(
+    "/api/ai-check",
+    requireAuth(auth),
+    asyncHandler(async (req, res) => {
+      const tokenResult = await auth.api.getToken({
+        headers: fromNodeHeaders(req.headers),
+      });
+
+      const aiUrl = process.env.AI_SERVICE_URL ?? "http://localhost:8001";
+      const aiRes = await fetch(`${aiUrl}/whoami`, {
+        headers: { Authorization: `Bearer ${tokenResult.token}` },
+      });
+
+      if (!aiRes.ok) {
+        throw new ApiError(502, "AI service rejected the token");
+      }
+
+      res.json({ aiServiceSaw: await aiRes.json() });
+    }),
+  );
+
+  // Must be mounted LAST, after every route above.
   app.use(errorHandler);
 
   const port = Number(process.env.PORT) || 8080;
-  app.listen(port, () => {
+  httpServer.listen(port, () => {
     console.log(`[api] listening on port ${port}`);
   });
 }

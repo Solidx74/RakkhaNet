@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { LayoutDashboard } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { RequireRole } from "@/components/auth/require-role";
@@ -13,8 +13,10 @@ import { useReliefRequestsLive } from "@/hooks/use-relief-requests-live";
 import { authClient } from "@/lib/auth-client";
 import {
   fetchAllReliefRequests,
+  fetchAssignableVolunteers,
   fetchResources,
   fetchShelters,
+  type AssignableVolunteer,
 } from "@/lib/api";
 
 function DashboardContent() {
@@ -39,6 +41,29 @@ function DashboardContent() {
     "dashboard-shelters",
     fetchShelters,
   );
+
+  // The assignable-volunteer list is only for coordinators/admins (the API
+  // returns 403 to anyone else), so it is only fetched for them. A plain
+  // fetch rather than useOfflineData: assigning is a write, so it needs a
+  // connection anyway, and names of other users shouldn't sit in the
+  // offline cache.
+  const canAssignOthers = role === "coordinator" || role === "admin";
+  const [volunteers, setVolunteers] = useState<AssignableVolunteer[]>([]);
+  useEffect(() => {
+    if (!canAssignOthers) return;
+    let cancelled = false;
+    fetchAssignableVolunteers()
+      .then((list) => {
+        if (!cancelled) setVolunteers(list);
+      })
+      .catch(() => {
+        // Leave the list empty; each card then shows its assign dropdown
+        // disabled rather than breaking the dashboard.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [canAssignOthers]);
 
   const refreshAll = useCallback(() => {
     refreshRequests();
@@ -110,6 +135,7 @@ function DashboardContent() {
                 currentUserId={currentUserId}
                 role={role}
                 onChanged={refreshAll}
+                volunteers={volunteers}
               />
             ))}
           </div>

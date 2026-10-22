@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   MapPin,
   Route,
+  ShieldCheck,
 } from "lucide-react";
 
 export type UserRole = "citizen" | "volunteer" | "coordinator" | "admin";
@@ -36,6 +37,12 @@ export const navItems: NavItem[] = [
     label: "Relief Dashboard",
     icon: LayoutDashboard,
     roles: ["volunteer", "coordinator", "admin"],
+  },
+  {
+    href: "/admin",
+    label: "Admin",
+    icon: ShieldCheck,
+    roles: ["admin"],
   },
 ];
 

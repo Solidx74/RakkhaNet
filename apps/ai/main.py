@@ -1,3 +1,6 @@
+import time
+from contextlib import asynccontextmanager
+
 from fastapi import Depends, FastAPI
 from pydantic import BaseModel, Field
 
@@ -5,7 +8,21 @@ import config
 from auth import verify_service_token
 from predictor import predict_risk_level
 
-app = FastAPI(title="RakkhaNet AI Service")
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    # Load the model (joblib load + first-time scikit-learn import) and run
+    # one throwaway prediction BEFORE the server accepts requests. Measured
+    # at ~5s on the first call vs ~0.09s afterwards; without this, the first
+    # real request exceeds Express's 3s timeout and silently falls back to
+    # the v1 rule even though the AI service is healthy.
+    start = time.perf_counter()
+    predict_risk_level(rainfall_mm=0, river_level_m=0, elevation_m=0)
+    print(f"[ai] model warmed up in {time.perf_counter() - start:.2f}s")
+    yield
+
+
+app = FastAPI(title="RakkhaNet AI Service", lifespan=lifespan)
 
 
 class RiskPredictionRequest(BaseModel):

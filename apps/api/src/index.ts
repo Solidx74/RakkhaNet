@@ -18,6 +18,24 @@ import { createRiskZoneRouter } from "./routes/riskZones.js";
 import { createReliefRequestRouter } from "./routes/reliefRequests.js";
 import { createResourceRouter } from "./routes/resources.js";
 import { createEvacuationRouter } from "./routes/evacuation.js";
+import { createAdminUsersRouter } from "./routes/adminUsers.js";
+import { getRiskAssessment } from "./lib/aiServiceClient.js";
+
+/**
+ * Reads an optional numeric query param. Absent -> undefined (so we can test
+ * the "missing input" path); present but not a finite number -> 400.
+ */
+function parseOptionalNumber(value: unknown, name: string): number | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value !== "string" || value.trim() === "") {
+    throw new ApiError(400, `${name} must be a number`);
+  }
+  const n = Number(value);
+  if (!Number.isFinite(n)) {
+    throw new ApiError(400, `${name} must be a number`);
+  }
+  return n;
+}
 
 async function main() {
   await connectToDatabase();
@@ -55,6 +73,8 @@ async function main() {
       res.json({ message: "you are an admin" });
     },
   );
+
+  app.use("/api/admin/users", createAdminUsersRouter(auth));
 
   app.use("/api/shelters", createShelterRouter(auth));
   app.use("/api/risk-zones", createRiskZoneRouter(auth));
@@ -98,6 +118,26 @@ async function main() {
       }
 
       res.json({ aiServiceSaw: await aiRes.json() });
+    }),
+  );
+
+  // Temporary diagnostic route for 4b-5-4 -- runs getRiskAssessment() on
+  // query-string inputs so both paths (AI up -> source "ai", AI down ->
+  // source "rule") can be seen from a browser. Safe to delete now that
+  // getRiskAssessment() is wired into the real POST /api/risk-zones route.
+  // Example: /api/risk-check?rainfallMm=250&riverLevelM=9&elevationM=2
+  app.get(
+    "/api/risk-check",
+    requireAuth(auth),
+    asyncHandler(async (req, res) => {
+      const inputs = {
+        rainfallMm: parseOptionalNumber(req.query.rainfallMm, "rainfallMm"),
+        riverLevelM: parseOptionalNumber(req.query.riverLevelM, "riverLevelM"),
+        elevationM: parseOptionalNumber(req.query.elevationM, "elevationM"),
+      };
+
+      const assessment = await getRiskAssessment(auth, req.headers, inputs);
+      res.json({ inputs, assessment });
     }),
   );
 

@@ -3,7 +3,11 @@
 import { useState } from "react";
 import { toast } from "react-toastify";
 import { Button } from "@/components/ui/button";
-import { assignReliefRequest, updateReliefRequestStatus } from "@/lib/api";
+import {
+  assignReliefRequest,
+  updateReliefRequestStatus,
+  type AssignableVolunteer,
+} from "@/lib/api";
 import type { ReliefRequest } from "@rakkhanet/shared-types";
 
 const PRIORITY_STYLE: Record<ReliefRequest["priority"], string> = {
@@ -28,24 +32,49 @@ const CATEGORY_LABELS: Record<ReliefRequest["category"], string> = {
   other: "Other",
 };
 
+const selectClass =
+  "h-8 rounded-md border bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50";
+
 export function RequestCard({
   request,
   currentUserId,
   role,
   onChanged,
+  volunteers = [],
 }: {
   request: ReliefRequest;
   currentUserId: string;
   role: "citizen" | "volunteer" | "coordinator" | "admin";
   onChanged: () => void;
+  /** Only loaded for coordinators/admins; empty for everyone else. */
+  volunteers?: AssignableVolunteer[];
 }) {
   const [busy, setBusy] = useState(false);
+  const [selectedVolunteer, setSelectedVolunteer] = useState("");
 
   const handleSelfAssign = async () => {
     setBusy(true);
     try {
       await assignReliefRequest(request._id, currentUserId);
       toast.success("Assigned to you");
+      onChanged();
+    } catch {
+      toast.error("Couldn't assign -- try again");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleAssignToVolunteer = async () => {
+    if (!selectedVolunteer) return;
+    setBusy(true);
+    try {
+      await assignReliefRequest(request._id, selectedVolunteer);
+      const name =
+        volunteers.find((v) => v.id === selectedVolunteer)?.name ??
+        "the volunteer";
+      toast.success(`Assigned to ${name}`);
+      setSelectedVolunteer("");
       onChanged();
     } catch {
       toast.error("Couldn't assign -- try again");
@@ -74,6 +103,18 @@ export function RequestCard({
     role === "coordinator" ||
     role === "admin";
 
+  // Coordinators/admins can pick a specific volunteer (and reassign) until
+  // the request is resolved.
+  const isCoordinatorOrAdmin = role === "coordinator" || role === "admin";
+  const canAssignOthers = isCoordinatorOrAdmin && request.status !== "resolved";
+
+  // Only coordinators/admins have the volunteer list, so only they see names.
+  const assignedName =
+    isCoordinatorOrAdmin && request.assignedVolunteerId
+      ? (volunteers.find((v) => v.id === request.assignedVolunteerId)?.name ??
+        "an unknown volunteer")
+      : null;
+
   return (
     <div className="rounded-lg border p-3">
       <div className="flex flex-wrap items-center gap-2">
@@ -95,6 +136,11 @@ export function RequestCard({
             (assigned to you)
           </span>
         )}
+        {assignedName && !isAssignedToMe && (
+          <span className="text-xs text-muted-foreground">
+            Assigned to {assignedName}
+          </span>
+        )}
       </div>
       <p className="mt-1.5 text-sm text-muted-foreground">
         {request.description}
@@ -113,6 +159,41 @@ export function RequestCard({
           >
             Accept this request
           </Button>
+        )}
+        {canAssignOthers && (
+          <>
+            <select
+              aria-label="Assign volunteer"
+              className={selectClass}
+              value={selectedVolunteer}
+              onChange={(e) => setSelectedVolunteer(e.target.value)}
+              disabled={busy || volunteers.length === 0}
+            >
+              <option value="">
+                {volunteers.length === 0
+                  ? "No volunteers available"
+                  : "Assign to…"}
+              </option>
+              {volunteers.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.name}
+                  {v.id === request.assignedVolunteerId ? " (current)" : ""}
+                </option>
+              ))}
+            </select>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleAssignToVolunteer}
+              disabled={
+                busy ||
+                !selectedVolunteer ||
+                selectedVolunteer === request.assignedVolunteerId
+              }
+            >
+              {request.assignedVolunteerId ? "Reassign" : "Assign"}
+            </Button>
+          </>
         )}
         {canProgressStatus && request.status === "assigned" && (
           <Button

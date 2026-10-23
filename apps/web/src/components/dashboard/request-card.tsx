@@ -32,6 +32,36 @@ const CATEGORY_LABELS: Record<ReliefRequest["category"], string> = {
   other: "Other",
 };
 
+const PRIORITY_RANK: Record<ReliefRequest["priority"], number> = {
+  low: 0,
+  medium: 1,
+  high: 2,
+  critical: 3,
+};
+
+/**
+ * How the AI's suggestion compares with the priority the request was filed
+ * with. The interesting case for triage is "higher" -- a citizen who
+ * under-reported -- so the card says so in words, not just with a colour.
+ * Returns null when there is nothing worth showing: no suggestion (AI down,
+ * not confident, or not answered yet) or a request that is already resolved.
+ */
+function priorityHint(request: ReliefRequest) {
+  const suggestion = request.suggestedPriority;
+  if (!suggestion || request.status === "resolved") return null;
+
+  const diff =
+    PRIORITY_RANK[suggestion.priority] - PRIORITY_RANK[request.priority];
+  const relation = diff > 0 ? "higher" : diff < 0 ? "lower" : "same";
+  return { suggestion, relation } as const;
+}
+
+const HINT_LABEL = {
+  higher: "AI suggests higher priority:",
+  lower: "AI suggests lower priority:",
+  same: "AI agrees:",
+} as const;
+
 const selectClass =
   "h-8 rounded-md border bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50";
 
@@ -115,6 +145,10 @@ export function RequestCard({
         "an unknown volunteer")
       : null;
 
+  // The API only sends suggestedPriority to operational roles, but the card
+  // also checks the role, so a citizen can never see it even by mistake.
+  const hint = role === "citizen" ? null : priorityHint(request);
+
   return (
     <div className="rounded-lg border p-3">
       <div className="flex flex-wrap items-center gap-2">
@@ -145,6 +179,26 @@ export function RequestCard({
       <p className="mt-1.5 text-sm text-muted-foreground">
         {request.description}
       </p>
+      {hint && (
+        <p
+          className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground"
+          title="An automated suggestion (English text only). It never changes the priority the request was filed with."
+        >
+          <span
+            className={
+              hint.relation === "higher" ? "font-medium text-foreground" : ""
+            }
+          >
+            {HINT_LABEL[hint.relation]}
+          </span>
+          <span
+            className={`rounded-full px-2 py-0.5 font-medium capitalize ${PRIORITY_STYLE[hint.suggestion.priority]}`}
+          >
+            {hint.suggestion.priority}
+          </span>
+          <span>({Math.round(hint.suggestion.confidence * 100)}%)</span>
+        </p>
+      )}
       <p className="mt-1 text-xs text-muted-foreground">
         {new Date(request.createdAt).toLocaleString()}
       </p>

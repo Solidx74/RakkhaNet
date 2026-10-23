@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { ObjectId } from "mongodb";
+import type { IncomingHttpHeaders } from "node:http";
 import type { Server as SocketIOServer } from "socket.io";
 import {
   reliefRequestCreateSchema,
@@ -9,6 +10,7 @@ import {
 import { getDb } from "../db/connection.js";
 import { asyncHandler, ApiError } from "../middleware/errorHandler.js";
 import { requireAuth, requireRole } from "../middleware/requireAuth.js";
+import { getPriorityHint } from "../lib/aiServiceClient.js";
 import type { Auth } from "../auth.js";
 
 // Better Auth's default collection name for users (same one adminUsers.ts uses).
@@ -34,6 +36,40 @@ function userIdFilter(id: string) {
 export function createReliefRequestRouter(auth: Auth, io: SocketIOServer) {
   const router = Router();
 
+  /**
+   * Fire-and-forget: asks the AI service for a priority suggestion and, if it
+   * gives a confident one, saves it on the request as `suggestedPriority`,
+   * then tells connected dashboards to refresh. Runs AFTER the citizen has
+   * already been answered, so a slow or dead AI service can never delay or
+   * break filing a request.
+   *
+   * It only ever sets `suggestedPriority` -- never `priority`, which stays
+   * whatever the citizen or a coordinator chose. getPriorityHint() never
+   * throws; the try/catch covers the database write.
+   */
+  async function attachPriorityHint(
+    requestId: ObjectId,
+    headers: IncomingHttpHeaders,
+    description: string,
+  ) {
+    try {
+      const hint = await getPriorityHint(auth, headers, description);
+      if (!hint) return; // no field at all, rather than a null one
+
+      // updatedAt is deliberately left alone: it records changes made by
+      // people, and a background hint isn't one.
+      await getDb()
+        .collection("relief_requests")
+        .updateOne({ _id: requestId }, { $set: { suggestedPriority: hint } });
+      io.emit("relief-requests:changed");
+    } catch (err) {
+      console.error(
+        "[ai] couldn't save priority hint:",
+        err instanceof Error ? err.message : err,
+      );
+    }
+  }
+
   // Any logged-in user can file a request -- always for themselves, never
   // on someone else's behalf (requesterId comes from the session, not the body).
   router.post(
@@ -55,6 +91,13 @@ export function createReliefRequestRouter(auth: Auth, io: SocketIOServer) {
       const result = await getDb().collection("relief_requests").insertOne(doc);
       io.emit("relief-requests:changed");
       res.status(201).json({ request: { _id: result.insertedId, ...doc } });
+
+      // After the response is sent -- see attachPriorityHint.
+      void attachPriorityHint(
+        result.insertedId,
+        req.headers,
+        input.description,
+      );
     }),
   );
 
@@ -76,9 +119,13 @@ export function createReliefRequestRouter(auth: Auth, io: SocketIOServer) {
       );
 
       const filter = mine || !canSeeAll ? { requesterId: req.user!.id } : {};
+      // The AI's priority suggestion is a triage aid for operational staff.
+      // Citizens never see it on their own requests -- it is a guess about
+      // their emergency, not something they set or asked for.
+      const projection = canSeeAll ? {} : { suggestedPriority: 0 };
       const requests = await getDb()
         .collection("relief_requests")
-        .find(filter)
+        .find(filter, { projection })
         .sort({ createdAt: -1 })
         .toArray();
       res.json({ requests });

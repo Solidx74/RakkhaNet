@@ -1,6 +1,6 @@
 import { fromNodeHeaders } from "better-auth/node";
 import type { IncomingHttpHeaders } from "node:http";
-import type { RiskLevel } from "@rakkhanet/shared-types";
+import type { ReliefRequest, RiskLevel } from "@rakkhanet/shared-types";
 import type { Auth } from "../auth.js";
 import { computeRiskScore } from "./riskScoring.js";
 
@@ -178,5 +178,124 @@ export async function getRiskAssessment(
       err instanceof Error ? err.message : err,
     );
     return fallback;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Request-triage hint (Phase 4c)
+// ---------------------------------------------------------------------------
+
+type ReliefPriority = ReliefRequest["priority"];
+
+/**
+ * Response from POST /predict/priority -- matches the return value of
+ * predict_priority() in apps/ai/priority_predictor.py. `confident` is the AI
+ * service's own verdict on whether the top probability cleared its
+ * MIN_CONFIDENCE threshold.
+ */
+export interface PriorityPredictionResult {
+  priority: string;
+  confidence: number; // probability of the predicted class, 0-1
+  confident: boolean;
+  probabilities: Record<string, number>;
+}
+
+/**
+ * Raw call to the AI service's POST /predict/priority. Takes an already-
+ * minted token, returns the parsed result, or throws on any failure
+ * (network error, timeout, non-2xx such as 401 or 422, malformed body).
+ * Like callPredictRisk, it does not handle failure itself.
+ */
+export async function callPredictPriority(
+  token: string,
+  description: string,
+): Promise<PriorityPredictionResult> {
+  const aiUrl = process.env.AI_SERVICE_URL ?? "http://localhost:8001";
+
+  const res = await fetch(`${aiUrl}/predict/priority`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ description }),
+    signal: AbortSignal.timeout(AI_REQUEST_TIMEOUT_MS),
+  });
+
+  if (!res.ok) {
+    throw new Error(
+      `AI service /predict/priority failed with status ${res.status}`,
+    );
+  }
+
+  return (await res.json()) as PriorityPredictionResult;
+}
+
+const PRIORITY_LEVELS: readonly ReliefPriority[] = [
+  "low",
+  "medium",
+  "high",
+  "critical",
+];
+
+function isReliefPriority(value: unknown): value is ReliefPriority {
+  return PRIORITY_LEVELS.includes(value as ReliefPriority);
+}
+
+/** A suggested priority worth showing -- only ever built from a confident answer. */
+export interface PriorityHint {
+  priority: ReliefPriority;
+  /** Probability of the suggested class, 0-1. */
+  confidence: number;
+}
+
+/**
+ * Asks the AI service to suggest a priority for a request description.
+ *
+ * Unlike getRiskAssessment() there is NO rule to fall back to: a hint is
+ * optional, and a made-up one would be worse than none. So this returns
+ * `null` -- meaning "store the request without a hint" -- when:
+ *   - the description is blank,
+ *   - ANY step fails (token, network, timeout, non-2xx, bad response; logged),
+ *   - or the model says it isn't confident (not logged; that is normal for
+ *     vague or non-English text).
+ * It never throws because of the AI service, so a down AI service can't
+ * break filing a relief request. The returned hint is a SUGGESTION: callers
+ * must never write it into `priority`.
+ */
+export async function getPriorityHint(
+  auth: Auth,
+  headers: IncomingHttpHeaders,
+  description: string,
+): Promise<PriorityHint | null> {
+  const text = description.trim();
+  if (!text) return null;
+
+  try {
+    const token = await mintServiceToken(auth, headers);
+    const prediction = await callPredictPriority(token, text);
+
+    if (
+      !isReliefPriority(prediction.priority) ||
+      typeof prediction.confidence !== "number" ||
+      typeof prediction.confident !== "boolean"
+    ) {
+      throw new Error(
+        `AI service returned an unexpected response: ${JSON.stringify(prediction)}`,
+      );
+    }
+
+    if (!prediction.confident) return null;
+
+    return {
+      priority: prediction.priority,
+      confidence: prediction.confidence,
+    };
+  } catch (err) {
+    console.warn(
+      "[ai] priority hint failed, storing request without one:",
+      err instanceof Error ? err.message : err,
+    );
+    return null;
   }
 }

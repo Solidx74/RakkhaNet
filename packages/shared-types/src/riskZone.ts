@@ -25,6 +25,15 @@ export type RiskZoneCreateInput = z.infer<typeof riskZoneCreateSchema>;
 export const riskZoneSchema = riskZoneCreateSchema.extend({
   _id: objectIdStringSchema,
   lastUpdated: z.coerce.date(),
+  // Written by the API since 4b-6 (see routes/riskZones.ts); deliberately
+  // NOT on the create schemas above, so a client can't claim a zone was
+  // AI-scored. All optional: zones created before 4b-6 have none of them,
+  // and those were rule-scored, so a missing `scoredBy` means "rule".
+  scoredBy: z.enum(["ai", "rule"]).optional(),
+  /** Only present when scoredBy is "ai": probability of the predicted level, 0-1. */
+  confidence: z.number().min(0).max(1).optional(),
+  /** Only present when scoredBy is "ai": probability per level. */
+  probabilities: z.record(z.string(), z.number()).optional(),
 });
 export type RiskZone = z.infer<typeof riskZoneSchema>;
 

@@ -4,6 +4,7 @@ import { MapContainer, TileLayer, Polygon, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import type { RiskZone } from "@rakkhanet/shared-types";
 import { geoPolygonToLatLngs } from "@/lib/geo";
+import { ZonePopupContent } from "@/components/risk/zone-popup-content";
 
 const RISK_COLOR: Record<RiskZone["riskLevel"], string> = {
   low: "#22C55E",
@@ -42,14 +43,7 @@ export function RiskZoneMap({
           }}
         >
           <Popup>
-            <div className="space-y-1">
-              <p className="font-semibold">{zone.region}</p>
-              <p className="text-sm capitalize">
-                {zone.hazardType} risk:{" "}
-                <strong className="capitalize">{zone.riskLevel}</strong> (
-                {zone.riskScore}/100)
-              </p>
-            </div>
+            <ZonePopupContent zone={zone} />
           </Popup>
         </Polygon>
       ))}

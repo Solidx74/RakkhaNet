@@ -4,6 +4,7 @@ import { useCallback, useState } from "react";
 import { ClipboardList, Plus } from "lucide-react";
 import { toast } from "react-toastify";
 import { PageHeader } from "@/components/layout/page-header";
+import { RequireRole } from "@/components/auth/require-role";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -43,7 +44,7 @@ const STATUS_STYLE: Record<ReliefRequest["status"], string> = {
   resolved: "bg-risk-low/15 text-risk-low",
 };
 
-export default function MyRequestsPage() {
+function MyRequestsContent() {
   const { position } = useGeolocation();
   const {
     data: requests,
@@ -179,5 +180,26 @@ export default function MyRequestsPage() {
         ))}
       </div>
     </div>
+  );
+}
+
+/**
+ * Any signed-in account may use this page; signed-out visitors are sent
+ * home. All four roles are listed because RequireRole has no "any role"
+ * option -- same list as the My Requests item in nav-config.ts.
+ *
+ * Wrapping (rather than checking inside the page) matters: the content
+ * above is not even mounted for a signed-out visitor, so it never calls the
+ * API or opens the live-update socket on their behalf.
+ *
+ * Like every RequireRole, this is a UX gate, not the security boundary: the
+ * API already answers 401 to anyone not signed in (requireAuth on
+ * /api/relief-requests), so no data was ever exposed -- only the empty page.
+ */
+export default function MyRequestsPage() {
+  return (
+    <RequireRole roles={["citizen", "volunteer", "coordinator", "admin"]}>
+      <MyRequestsContent />
+    </RequireRole>
   );
 }

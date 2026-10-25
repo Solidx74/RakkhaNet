@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { getCached, setCached } from "@/lib/offline-cache";
 
 interface OfflineDataState<T> {
@@ -12,48 +12,143 @@ interface OfflineDataState<T> {
   refresh: () => void;
 }
 
+/** Everything the hook reports, tagged with the key it belongs to. */
+interface Snapshot<T> {
+  key: string;
+  data: T | null;
+  loading: boolean;
+  isStale: boolean;
+  cachedAt: number | null;
+  error: string | null;
+}
+
+function emptySnapshot<T>(key: string): Snapshot<T> {
+  return {
+    key,
+    data: null,
+    loading: true,
+    isStale: false,
+    cachedAt: null,
+    error: null,
+  };
+}
+
 /**
  * Fetches fresh data and caches it on success. On failure (offline, API
  * down), falls back to whatever was last cached and marks it stale -- the
  * caller decides how to show that; this hook never pretends stale data is fresh.
+ *
+ * Three guarantees that matter when `key` changes with the user's location:
+ *  - Only the LATEST request may update the screen. A slow answer for an
+ *    earlier key (e.g. a route for the fallback position that took 5s) can
+ *    no longer overwrite the answer for the current key.
+ *  - Data from a previous key is never shown under the new key. After a key
+ *    change the hook reports "loading, no data" until the new key's own
+ *    data (fresh or cached) arrives.
+ *  - The newest `fetcher` is always the one called, even if the caller
+ *    doesn't memoise it, without re-fetching every time it changes.
  */
 export function useOfflineData<T>(
   key: string,
   fetcher: () => Promise<T>,
 ): OfflineDataState<T> {
-  const [data, setData] = useState<T | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [isStale, setIsStale] = useState(false);
-  const [cachedAt, setCachedAt] = useState<number | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [snapshot, setSnapshot] = useState<Snapshot<T>>(() =>
+    emptySnapshot<T>(key),
+  );
+
+  // Declared before the load effect below, so on a key change the ref
+  // already holds the new fetcher when load() runs.
+  const fetcherRef = useRef(fetcher);
+  useEffect(() => {
+    fetcherRef.current = fetcher;
+  });
+
+  const requestIdRef = useRef(0);
 
   const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+    const requestId = ++requestIdRef.current;
+    const isCurrent = () => requestId === requestIdRef.current;
+
+    // Same key (a refresh): keep what is on screen and just mark it loading.
+    // New key: start empty.
+    setSnapshot((prev) =>
+      prev.key === key
+        ? { ...prev, loading: true, error: null }
+        : emptySnapshot<T>(key),
+    );
+
     try {
-      const fresh = await fetcher();
-      setData(fresh);
-      setIsStale(false);
-      setCachedAt(Date.now());
-      await setCached(key, fresh);
-    } catch (err) {
-      const cached = await getCached<T>(key);
-      if (cached) {
-        setData(cached.data);
-        setCachedAt(cached.cachedAt);
-        setIsStale(true);
-      } else {
-        setError(err instanceof Error ? err.message : "Failed to load data");
+      const fresh = await fetcherRef.current();
+
+      if (isCurrent()) {
+        setSnapshot({
+          key,
+          data: fresh,
+          loading: false,
+          isStale: false,
+          cachedAt: Date.now(),
+          error: null,
+        });
       }
-    } finally {
-      setLoading(false);
+
+      // Cached under THIS request's own key even if it was superseded --
+      // the data really does belong to that key. A failed cache write
+      // (private mode, quota) must not turn fresh data into an error.
+      try {
+        await setCached(key, fresh);
+      } catch (cacheErr) {
+        console.warn("[offline-cache] couldn't save", key, cacheErr);
+      }
+    } catch (err) {
+      let cached: Awaited<ReturnType<typeof getCached<T>>> = null;
+      try {
+        cached = await getCached<T>(key);
+      } catch {
+        // Cache unreadable too -- handled as "nothing cached" below.
+      }
+
+      if (!isCurrent()) return;
+
+      if (cached) {
+        setSnapshot({
+          key,
+          data: cached.data,
+          loading: false,
+          isStale: true,
+          cachedAt: cached.cachedAt,
+          error: null,
+        });
+      } else {
+        const message =
+          err instanceof Error ? err.message : "Failed to load data";
+        setSnapshot((prev) => ({
+          ...(prev.key === key ? prev : emptySnapshot<T>(key)),
+          loading: false,
+          error: message,
+        }));
+      }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
 
   useEffect(() => {
-    load();
+    void load();
+    // Runs when the key changes or the component unmounts: whatever is still
+    // in flight is now out of date and must not touch the screen.
+    return () => {
+      requestIdRef.current++;
+    };
   }, [load]);
 
-  return { data, loading, isStale, cachedAt, error, refresh: load };
+  // Derived, not reset in an effect: on the render where `key` changes there
+  // is no frame that shows the previous key's data.
+  const current = snapshot.key === key ? snapshot : emptySnapshot<T>(key);
+
+  return {
+    data: current.data,
+    loading: current.loading,
+    isStale: current.isStale,
+    cachedAt: current.cachedAt,
+    error: current.error,
+    refresh: load,
+  };
 }

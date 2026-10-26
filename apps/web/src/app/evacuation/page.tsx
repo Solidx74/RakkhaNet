@@ -4,6 +4,7 @@ import { useCallback } from "react";
 import dynamic from "next/dynamic";
 import { Route, Navigation } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
+import { LocationNotice } from "@/components/location/location-notice";
 import { useOfflineData } from "@/hooks/use-offline-data";
 import { useGeolocation } from "@/hooks/use-geolocation";
 import { geoPointToLatLng } from "@/lib/geo";
@@ -52,8 +53,13 @@ async function fetchEvacuationRoute(
 }
 
 export default function EvacuationPage() {
-  const { position } = useGeolocation();
-  const cacheKey = `evacuation-route-${position[0].toFixed(2)}-${position[1].toFixed(2)}`;
+  const { position, ready } = useGeolocation();
+  // null until the saved location has been read from the device, so no
+  // request goes out for the Chattogram default while the app is still
+  // working out where you are.
+  const cacheKey = ready
+    ? `evacuation-route-${position[0].toFixed(2)}-${position[1].toFixed(2)}`
+    : null;
   const fetcher = useCallback(
     () => fetchEvacuationRoute(position[0], position[1]),
     [position],
@@ -75,6 +81,7 @@ export default function EvacuationPage() {
           title="Evacuation Guidance"
           description="Step-by-step directions to the nearest open shelter."
         />
+        <LocationNotice variant="browse" />
         <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm">
           <p>Couldn&apos;t find a route, and nothing is cached yet.</p>
           <button
@@ -99,6 +106,8 @@ export default function EvacuationPage() {
         title="Evacuation Guidance"
         description="Step-by-step directions to the nearest open shelter."
       />
+
+      <LocationNotice variant="browse" />
 
       {isStale && cachedAt && (
         <div className="mb-4 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm">

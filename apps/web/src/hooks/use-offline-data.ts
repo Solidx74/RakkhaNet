@@ -47,13 +47,17 @@ function emptySnapshot<T>(key: string): Snapshot<T> {
  *    data (fresh or cached) arrives.
  *  - The newest `fetcher` is always the one called, even if the caller
  *    doesn't memoise it, without re-fetching every time it changes.
+ *
+ * Pass `null` as the key to mean "not ready to load yet" (e.g. the user's
+ * location hasn't been read from the device): nothing is fetched, and the
+ * hook reports "loading, no data" until a real key arrives.
  */
 export function useOfflineData<T>(
-  key: string,
+  key: string | null,
   fetcher: () => Promise<T>,
 ): OfflineDataState<T> {
   const [snapshot, setSnapshot] = useState<Snapshot<T>>(() =>
-    emptySnapshot<T>(key),
+    emptySnapshot<T>(key ?? ""),
   );
 
   // Declared before the load effect below, so on a key change the ref
@@ -66,15 +70,19 @@ export function useOfflineData<T>(
   const requestIdRef = useRef(0);
 
   const load = useCallback(async () => {
+    // Not ready: nothing to load, and nothing to refresh.
+    if (key === null) return;
+    const k: string = key;
+
     const requestId = ++requestIdRef.current;
     const isCurrent = () => requestId === requestIdRef.current;
 
     // Same key (a refresh): keep what is on screen and just mark it loading.
     // New key: start empty.
     setSnapshot((prev) =>
-      prev.key === key
+      prev.key === k
         ? { ...prev, loading: true, error: null }
-        : emptySnapshot<T>(key),
+        : emptySnapshot<T>(k),
     );
 
     try {
@@ -82,7 +90,7 @@ export function useOfflineData<T>(
 
       if (isCurrent()) {
         setSnapshot({
-          key,
+          key: k,
           data: fresh,
           loading: false,
           isStale: false,
@@ -95,14 +103,14 @@ export function useOfflineData<T>(
       // the data really does belong to that key. A failed cache write
       // (private mode, quota) must not turn fresh data into an error.
       try {
-        await setCached(key, fresh);
+        await setCached(k, fresh);
       } catch (cacheErr) {
-        console.warn("[offline-cache] couldn't save", key, cacheErr);
+        console.warn("[offline-cache] couldn't save", k, cacheErr);
       }
     } catch (err) {
       let cached: Awaited<ReturnType<typeof getCached<T>>> = null;
       try {
-        cached = await getCached<T>(key);
+        cached = await getCached<T>(k);
       } catch {
         // Cache unreadable too -- handled as "nothing cached" below.
       }
@@ -111,7 +119,7 @@ export function useOfflineData<T>(
 
       if (cached) {
         setSnapshot({
-          key,
+          key: k,
           data: cached.data,
           loading: false,
           isStale: true,
@@ -122,7 +130,7 @@ export function useOfflineData<T>(
         const message =
           err instanceof Error ? err.message : "Failed to load data";
         setSnapshot((prev) => ({
-          ...(prev.key === key ? prev : emptySnapshot<T>(key)),
+          ...(prev.key === k ? prev : emptySnapshot<T>(k)),
           loading: false,
           error: message,
         }));
@@ -141,7 +149,10 @@ export function useOfflineData<T>(
 
   // Derived, not reset in an effect: on the render where `key` changes there
   // is no frame that shows the previous key's data.
-  const current = snapshot.key === key ? snapshot : emptySnapshot<T>(key);
+  const current =
+    key !== null && snapshot.key === key
+      ? snapshot
+      : emptySnapshot<T>(key ?? "");
 
   return {
     data: current.data,

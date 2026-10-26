@@ -5,6 +5,7 @@ import { ClipboardList, Plus } from "lucide-react";
 import { toast } from "react-toastify";
 import { PageHeader } from "@/components/layout/page-header";
 import { RequireRole } from "@/components/auth/require-role";
+import { LocationNotice } from "@/components/location/location-notice";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -45,7 +46,12 @@ const STATUS_STYLE: Record<ReliefRequest["status"], string> = {
 };
 
 function MyRequestsContent() {
-  const { position } = useGeolocation();
+  const { position, source, ready } = useGeolocation();
+  // A request is pinned to this position, and volunteers go there. With no
+  // known location the position is only a default (Chattogram), so nothing
+  // may be filed against it. A "saved" (last known) location is allowed --
+  // the notice in the form warns about it.
+  const canAttachLocation = ready && source !== "fallback";
   const {
     data: requests,
     loading,
@@ -59,6 +65,10 @@ function MyRequestsContent() {
   const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = useCallback(async () => {
+    if (!canAttachLocation) {
+      toast.error("We can't find your location yet -- see the note above");
+      return;
+    }
     if (!description.trim()) {
       toast.error("Please describe what help you need");
       return;
@@ -80,7 +90,7 @@ function MyRequestsContent() {
     } finally {
       setSubmitting(false);
     }
-  }, [description, category, position, refresh]);
+  }, [canAttachLocation, description, category, position, refresh]);
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-6">
@@ -131,15 +141,12 @@ function MyRequestsContent() {
                   rows={4}
                 />
               </div>
-              <p className="text-xs text-muted-foreground">
-                Your current location will be attached automatically so
-                volunteers can find you.
-              </p>
+              <LocationNotice variant="report" />
             </div>
             <DialogFooter>
               <Button
                 onClick={handleSubmit}
-                disabled={submitting}
+                disabled={submitting || !canAttachLocation}
                 className="w-full"
               >
                 {submitting ? "Submitting..." : "Submit request"}

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { MapPin } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { OfflineBanner } from "@/components/offline-banner";
+import { LocationNotice } from "@/components/location/location-notice";
 import { useOfflineData } from "@/hooks/use-offline-data";
 import { useGeolocation } from "@/hooks/use-geolocation";
 import { fetchNearbyShelters } from "@/lib/api";
@@ -23,11 +24,16 @@ const ShelterMap = dynamic(
 );
 
 export default function SheltersPage() {
-  const { position } = useGeolocation();
+  const { position, ready } = useGeolocation();
   // Cache key includes a rounded position so different areas get their own
   // cache entry, and a real geolocation result (vs. the fallback) triggers
   // a fresh fetch instead of silently reusing Chattogram-center results.
-  const cacheKey = `shelters-near-${position[0].toFixed(2)}-${position[1].toFixed(2)}`;
+  // It is null until the saved location has been read from the device, so
+  // no request goes out for the Chattogram default while the app is still
+  // working out where you are.
+  const cacheKey = ready
+    ? `shelters-near-${position[0].toFixed(2)}-${position[1].toFixed(2)}`
+    : null;
   const fetcher = useCallback(
     () => fetchNearbyShelters(position[0], position[1]),
     [position],
@@ -49,6 +55,7 @@ export default function SheltersPage() {
           title="Shelter Locator"
           description="Find the nearest open shelter and check its current capacity."
         />
+        <LocationNotice variant="browse" />
         <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm">
           <p>
             Couldn&apos;t load shelter data, and nothing is cached yet for this
@@ -72,6 +79,8 @@ export default function SheltersPage() {
         title="Shelter Locator"
         description="Find the nearest open shelter and check its current capacity."
       />
+
+      <LocationNotice variant="browse" />
 
       {isStale && <OfflineBanner cachedAt={cachedAt} />}
 

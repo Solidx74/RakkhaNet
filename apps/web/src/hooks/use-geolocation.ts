@@ -226,6 +226,22 @@ export function clearManualLocation() {
 }
 
 /**
+ * Ask the browser for GPS again -- for a "Try again" button after a timeout
+ * or a denied prompt. Does nothing while a request is already in flight or
+ * after one has succeeded this visit (no duplicate prompts), and cannot get
+ * around a browser-level block: if the user has blocked location for the
+ * site, the browser answers "denied" again straight away.
+ */
+export function retryGps() {
+  if (typeof window === "undefined") return;
+  initialise();
+  if (gpsRequested) return;
+  gpsStatus = "pending";
+  commit();
+  requestGps();
+}
+
+/**
  * The user's location, shared by every page. `position` is [lat, lng].
  * `isFallback` is kept for older callers: true only when nothing is known.
  * Code that files data against a location should look at `source` (and
@@ -242,5 +258,6 @@ export function useGeolocation() {
     ready: s.ready,
     setManual: setManualLocation,
     clearManual: clearManualLocation,
+    retryGps,
   };
 }

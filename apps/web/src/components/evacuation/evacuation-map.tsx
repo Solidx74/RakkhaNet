@@ -24,12 +24,27 @@ const shelterIcon = L.divIcon({
   iconAnchor: [8, 8],
 });
 
+/**
+ * Fits the map to the route when the route's COORDINATES change. The parent
+ * builds `points` as a fresh array on every render, so depending on the
+ * array itself would re-fit (and undo the person's zooming and panning) on
+ * every unrelated re-render. The effect is keyed on a string of the
+ * coordinates instead, and reads the points back from that same string so
+ * the two can't disagree.
+ */
 function FitToRoute({ points }: { points: [number, number][] }) {
   const map = useMap();
+  const signature = points.map(([lat, lng]) => `${lat},${lng}`).join(";");
+
   useEffect(() => {
-    if (points.length < 2) return;
-    map.fitBounds(L.latLngBounds(points), { padding: [40, 40] });
-  }, [points, map]);
+    const pts = signature
+      .split(";")
+      .filter(Boolean)
+      .map((pair) => pair.split(",").map(Number) as [number, number]);
+    if (pts.length < 2) return;
+    map.fitBounds(L.latLngBounds(pts), { padding: [40, 40] });
+  }, [signature, map]);
+
   return null;
 }
 

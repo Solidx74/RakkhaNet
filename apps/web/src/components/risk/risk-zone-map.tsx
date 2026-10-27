@@ -4,6 +4,7 @@ import { MapContainer, TileLayer, Polygon, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import type { RiskZone } from "@rakkhanet/shared-types";
 import { geoPolygonToLatLngs } from "@/lib/geo";
+import { RecenterOnChange } from "@/components/map/recenter-on-change";
 import { ZonePopupContent } from "@/components/risk/zone-popup-content";
 
 const RISK_COLOR: Record<RiskZone["riskLevel"], string> = {
@@ -31,6 +32,7 @@ export function RiskZoneMap({
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
+      <RecenterOnChange center={center} />
       {riskZones.map((zone) => (
         <Polygon
           key={zone._id}

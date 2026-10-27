@@ -27,6 +27,13 @@ const EvacuationMap = dynamic(
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 
+// The API picks the nearest OPEN shelter with no maximum distance. Beyond
+// this the page says plainly that it is far, instead of drawing a route as
+// if it were a short walk. 20 km matches the radius the Shelters page uses.
+const FAR_KM = 20;
+// Same walking speed the API uses for its straight-line estimate.
+const WALKING_KMH = 4.5;
+
 interface EvacuationRoute {
   shelter: Shelter;
   routeType: "driving" | "straight-line";
@@ -38,6 +45,24 @@ interface EvacuationRoute {
   direction?: string;
   estimatedWalkMinutes?: number;
   instructions?: string;
+}
+
+/** Distance to the shelter in km, whichever kind of route came back. */
+function routeDistanceKm(route: EvacuationRoute): number | null {
+  if (route.routeType === "driving") {
+    return typeof route.distanceMeters === "number"
+      ? route.distanceMeters / 1000
+      : null;
+  }
+  return typeof route.distanceKm === "number" ? route.distanceKm : null;
+}
+
+/** Rough on-foot time for a distance, in plain words. */
+function formatWalkTime(km: number): string {
+  const hours = km / WALKING_KMH;
+  if (hours < 1) return `${Math.max(1, Math.round(hours * 60))} minutes`;
+  const rounded = Math.round(hours * 2) / 2; // nearest half hour
+  return rounded === 1 ? "1 hour" : `${rounded} hours`;
 }
 
 async function fetchEvacuationRoute(
@@ -53,7 +78,7 @@ async function fetchEvacuationRoute(
 }
 
 export default function EvacuationPage() {
-  const { position, ready } = useGeolocation();
+  const { position, ready, source } = useGeolocation();
   // null until the saved location has been read from the device, so no
   // request goes out for the Chattogram default while the app is still
   // working out where you are.
@@ -95,6 +120,13 @@ export default function EvacuationPage() {
     );
   }
 
+  // Not shown when the location is only the Chattogram default: the
+  // distance would be from a position that isn't yours, and the location
+  // notice above already says so.
+  const distanceKm = route ? routeDistanceKm(route) : null;
+  const isFar =
+    distanceKm !== null && distanceKm > FAR_KM && source !== "fallback";
+
   const routeGeometry = route?.geometry?.coordinates.map(
     ([lng, lat]) => [lat, lng] as [number, number],
   );
@@ -115,6 +147,24 @@ export default function EvacuationPage() {
           <strong>{new Date(cachedAt).toLocaleString()}</strong> -- you appear
           to be offline. This shelter&apos;s open/full status may have changed
           since then.
+        </div>
+      )}
+
+      {isFar && distanceKm !== null && (
+        <div
+          className="mb-4 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm"
+          role="status"
+        >
+          <p>
+            <strong>The nearest open shelter is far from you:</strong>{" "}
+            {distanceKm.toFixed(1)} km, roughly {formatWalkTime(distanceKm)} on
+            foot.
+          </p>
+          <p className="mt-1 text-muted-foreground">
+            Only shelters marked open are used, so nearer ones may be full or
+            closed. If you can&apos;t reach this one safely, contact local
+            authorities or nearby volunteers for help.
+          </p>
         </div>
       )}
 

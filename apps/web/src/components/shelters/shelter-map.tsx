@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import type { Shelter } from "@rakkhanet/shared-types";
 import { geoPointToLatLng } from "@/lib/geo";
+import { RecenterOnChange } from "@/components/map/recenter-on-change";
 
 // Hex approximations of the --risk-* CSS tokens -- Leaflet's SVG attributes
 // can't resolve CSS custom properties, so these are kept in sync by hand.
@@ -15,7 +15,7 @@ const STATUS_COLOR: Record<Shelter["status"], string> = {
   closed: "#94A3B8",
 };
 
-function shelterIcon(status: Shelter["status"]) {
+function makeShelterIcon(status: Shelter["status"]) {
   return L.divIcon({
     className: "",
     html: `<div style="background:${STATUS_COLOR[status]};width:16px;height:16px;border-radius:9999px;border:3px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.4)"></div>`,
@@ -24,14 +24,14 @@ function shelterIcon(status: Shelter["status"]) {
   });
 }
 
-/** Recenters the map imperatively when `center` resolves late (geolocation). */
-function RecenterOnChange({ center }: { center: [number, number] }) {
-  const map = useMap();
-  useEffect(() => {
-    map.setView(center);
-  }, [center, map]);
-  return null;
-}
+// Built once per status. A new icon object on every render makes
+// react-leaflet re-apply the icon to every marker each time the page
+// re-renders (GPS status change, data refresh, ...) for no visible reason.
+const SHELTER_ICONS: Record<Shelter["status"], L.DivIcon> = {
+  open: makeShelterIcon("open"),
+  full: makeShelterIcon("full"),
+  closed: makeShelterIcon("closed"),
+};
 
 export function ShelterMap({
   shelters,
@@ -56,7 +56,7 @@ export function ShelterMap({
         <Marker
           key={shelter._id}
           position={geoPointToLatLng(shelter.location)}
-          icon={shelterIcon(shelter.status)}
+          icon={SHELTER_ICONS[shelter.status]}
         >
           <Popup>
             <div className="space-y-1">

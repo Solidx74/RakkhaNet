@@ -3,7 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LogIn, LogOut, Menu } from "lucide-react";
+import { LogIn, LogOut, Menu, WifiOff } from "lucide-react";
+import { toast } from "react-toastify";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -19,7 +20,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { authClient } from "@/lib/auth-client";
+import { signOutThisDevice, useAppSession } from "@/hooks/use-app-session";
 import { Logo } from "@/components/logo";
 import { visibleNavItems } from "./nav-config";
 import { cn } from "@/lib/utils";
@@ -27,7 +28,9 @@ import { cn } from "@/lib/utils";
 export function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = usePathname();
-  const { data: session } = authClient.useSession();
+  // `offline` is true when the API can't be reached and the last signed-in
+  // account (saved on this device) is being shown instead.
+  const { data: session, offline } = useAppSession();
   const role = (session?.user as { role?: string } | undefined)?.role as
     | "citizen"
     | "volunteer"
@@ -36,6 +39,15 @@ export function Navbar() {
     | undefined;
 
   const items = visibleNavItems(role ?? null);
+
+  const handleSignOut = async () => {
+    const ok = await signOutThisDevice();
+    if (!ok) {
+      toast.error(
+        "Couldn't sign out -- the server can't be reached. Try again when you're back online.",
+      );
+    }
+  };
 
   return (
     <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
@@ -65,6 +77,14 @@ export function Navbar() {
         </nav>
 
         <div className="flex items-center gap-2">
+          {offline && (
+            <span
+              title="Offline -- showing your last signed-in account"
+              className="text-muted-foreground"
+            >
+              <WifiOff className="h-4 w-4" aria-label="Offline" />
+            </span>
+          )}
           {session ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -77,7 +97,7 @@ export function Navbar() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => authClient.signOut()}>
+                <DropdownMenuItem onClick={handleSignOut}>
                   <LogOut className="mr-2 h-4 w-4" />
                   Sign out
                 </DropdownMenuItem>

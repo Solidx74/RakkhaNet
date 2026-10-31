@@ -143,10 +143,10 @@ export default function EvacuationPage() {
 
       {isStale && cachedAt && (
         <div className="mb-4 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm">
-          Showing a route saved from{" "}
-          <strong>{new Date(cachedAt).toLocaleString()}</strong> -- you appear
-          to be offline. This shelter&apos;s open/full status may have changed
-          since then.
+          Couldn&apos;t reach the server, so this is a route saved on{" "}
+          <strong>{new Date(cachedAt).toLocaleString()}</strong>. You may be
+          offline or the server may be down. This shelter&apos;s open/full
+          status may have changed since then.
         </div>
       )}
 

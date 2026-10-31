@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { MapPin } from "lucide-react";
@@ -10,6 +10,12 @@ import { LocationNotice } from "@/components/location/location-notice";
 import { useOfflineData } from "@/hooks/use-offline-data";
 import { useGeolocation } from "@/hooks/use-geolocation";
 import { fetchNearbyShelters } from "@/lib/api";
+import { geoPointToLatLng } from "@/lib/geo";
+import {
+  compassBearing,
+  formatDistance,
+  haversineDistanceKm,
+} from "@/lib/geo-math";
 
 const ShelterMap = dynamic(
   () => import("@/components/shelters/shelter-map").then((m) => m.ShelterMap),
@@ -24,7 +30,7 @@ const ShelterMap = dynamic(
 );
 
 export default function SheltersPage() {
-  const { position, ready } = useGeolocation();
+  const { position, ready, source } = useGeolocation();
   // Cache key includes a rounded position so different areas get their own
   // cache entry, and a real geolocation result (vs. the fallback) triggers
   // a fresh fetch instead of silently reusing Chattogram-center results.
@@ -46,6 +52,31 @@ export default function SheltersPage() {
     error,
     refresh,
   } = useOfflineData(cacheKey, fetcher);
+
+  // Distance and direction are worked out here, on the device, from the
+  // location and the saved shelter list -- so they still work with no
+  // connection (GPS needs none). They are NOT shown for the Chattogram
+  // default: that would be distance from a place you aren't.
+  const hasRealLocation = source !== "fallback";
+  const rows = useMemo(() => {
+    const list = (shelters ?? []).map((shelter) => {
+      const [lat, lng] = geoPointToLatLng(shelter.location);
+      return {
+        shelter,
+        km: hasRealLocation
+          ? haversineDistanceKm(position[0], position[1], lat, lng)
+          : null,
+        direction: hasRealLocation
+          ? compassBearing(position[0], position[1], lat, lng)
+          : null,
+      };
+    });
+    // Nearest first. Without a real location, keep the order the API gave.
+    if (hasRealLocation) list.sort((a, b) => (a.km ?? 0) - (b.km ?? 0));
+    return list;
+  }, [shelters, position, hasRealLocation]);
+  const nearestOpen =
+    rows.find((r) => r.shelter.status === "open" && r.km !== null) ?? null;
 
   if (error && !shelters) {
     return (
@@ -100,8 +131,40 @@ export default function SheltersPage() {
             {shelters?.length ?? 0} shelter{shelters?.length === 1 ? "" : "s"}{" "}
             nearby
           </h2>
+          {hasRealLocation && rows.length > 0 && (
+            <>
+              {nearestOpen && nearestOpen.km !== null ? (
+                <Link
+                  href={`/shelters/${nearestOpen.shelter._id}`}
+                  className="block rounded-lg border border-risk-low/40 bg-risk-low/10 p-3"
+                >
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Nearest open shelter
+                  </p>
+                  <p className="mt-0.5 font-medium">
+                    {nearestOpen.shelter.name}
+                  </p>
+                  <p className="text-sm">
+                    <strong>{formatDistance(nearestOpen.km)}</strong>{" "}
+                    {nearestOpen.direction}
+                  </p>
+                </Link>
+              ) : (
+                <p className="rounded-lg border p-3 text-sm">
+                  None of the shelters listed here is marked open. The{" "}
+                  <Link href="/evacuation" className="underline">
+                    Evacuation page
+                  </Link>{" "}
+                  looks for the nearest open one, even if it is farther away.
+                </p>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Distances are in a straight line, not by road.
+              </p>
+            </>
+          )}
           <div className="space-y-2">
-            {shelters?.map((shelter) => (
+            {rows.map(({ shelter, km, direction }) => (
               <Link
                 key={shelter._id}
                 href={`/shelters/${shelter._id}`}
@@ -125,6 +188,11 @@ export default function SheltersPage() {
                 <p className="mt-1 text-sm text-muted-foreground">
                   {shelter.address}
                 </p>
+                {km !== null && direction && (
+                  <p className="mt-1 text-sm">
+                    <strong>{formatDistance(km)}</strong> {direction}
+                  </p>
+                )}
                 <p className="mt-1 text-sm">
                   {shelter.currentOccupancy} / {shelter.capacity} occupied
                 </p>

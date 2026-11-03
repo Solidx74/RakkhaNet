@@ -7,6 +7,7 @@
     "dev": "tsx watch src/index.ts",
     "typecheck": "tsc --noEmit",
     "seed": "tsx src/db/seed.ts",
+    "seed:risk-zones": "tsx src/scripts/seedRiskZones.ts",
     "set-role": "tsx src/scripts/setRole.ts"
   },
   "dependencies": {

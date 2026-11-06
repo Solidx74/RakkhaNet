@@ -7,6 +7,7 @@ import {
   MapPin,
   Route,
   ShieldCheck,
+  Wrench,
 } from "lucide-react";
 
 export type UserRole = "citizen" | "volunteer" | "coordinator" | "admin";
@@ -37,6 +38,14 @@ export const navItems: NavItem[] = [
     label: "Relief Dashboard",
     icon: LayoutDashboard,
     roles: ["volunteer", "coordinator", "admin"],
+  },
+  // Coordinators get their own entry. Admins already have the same tools on
+  // the Admin page, so the link isn't repeated for them.
+  {
+    href: "/coordinator",
+    label: "Coordinator Tools",
+    icon: Wrench,
+    roles: ["coordinator"],
   },
   {
     href: "/admin",

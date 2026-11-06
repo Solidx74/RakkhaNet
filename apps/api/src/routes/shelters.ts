@@ -63,10 +63,12 @@ export function createShelterRouter(auth: Auth) {
     }),
   );
 
+  // Creating a shelter: coordinators run the relief operation and know where
+  // shelters are opening, so they can register them -- not only admins.
   router.post(
     "/",
     requireAuth(auth),
-    requireRole("admin"),
+    requireRole("coordinator", "admin"),
     asyncHandler(async (req, res) => {
       const input = shelterCreateSchema.parse(req.body);
       const now = new Date();

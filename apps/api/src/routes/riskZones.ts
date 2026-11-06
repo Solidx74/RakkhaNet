@@ -23,10 +23,13 @@ export function createRiskZoneRouter(auth: Auth) {
     }),
   );
 
+  // Coordinators and admins may create zones. The level is never supplied by
+  // the caller -- the server computes it (AI, or the rule as fallback) -- so
+  // this widens who can ADD a zone, not who can choose its level.
   router.post(
     "/",
     requireAuth(auth),
-    requireRole("admin"),
+    requireRole("coordinator", "admin"),
     asyncHandler(async (req, res) => {
       const input = riskZoneComputeSchema.parse(req.body);
 
